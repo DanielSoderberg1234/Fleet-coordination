@@ -22,12 +22,12 @@ class CollisionAvoidance:
         self.nu = 2 # Nr of control inputs
         self.N = 20 # Length of horizon 
         self.ts = 0.1 # Sampling time
-        q = 0.1
-        qtheta = 100
-        r = 0.1
-        qN = 0.1
-        qthetaN = 100
-        qobs = 100
+        q = 10 # Cost of deviating from x and y reference
+        qtheta = 1 # Cost of deviating from angle reference
+        r = 0.1 # Cost for control action
+        qN = 100 # Final cost of deviating from x and y reference
+        qthetaN = 10 # Final cost of deviating from angle reference
+        qobs = 200 # Cost for being closer than r to the other robot
         self.weights = [q,qtheta,r,qN,qthetaN,qobs]
 
         # Create the solver and open a tcp port to it 
@@ -88,8 +88,8 @@ class CollisionAvoidance:
         plt.plot(x2[1:],y2[1:],'-o',color='b',alpha=0.2, label="Predicted2")
         plt.plot(x2[0]+r*np.cos(ang), y2[0]+r*np.sin(ang),color='k')
 
-        plt.xlim(-1.5,1.5)
-        plt.ylim(-1.5,1.5)
+        plt.xlim(-2,2)
+        plt.ylim(-2,2)
         plt.legend()
         
 
@@ -135,20 +135,34 @@ class CollisionAvoidance:
 
         return traj1, traj2
 
-    def run(self): 
+    def run(self, traj1, traj2): 
         # Make sure that the plots are non-blocking
         plt.show(block=False)
-        # Desired trajectories
-        traj1 = generate_straight_trajectory(-1,0,0,1,0.1) # Trajectory from x=-1, y=0 driving straight to the right
-        traj2 = generate_straight_trajectory(0,-1,cs.pi/2,1,0.1) # Trajectory from x=0,y=-1 driving straight up
-
+        
         # Run from the next step
         for j in range(0,self.N-1):    
             # Run collision avoidance again
             traj1, traj2 = self.run_one_iteration(traj1, traj2)
 
-        self.mng.kill()
+        plt.pause(2)
+        plt.close()
 
 if __name__=="__main__": 
     avoid = CollisionAvoidance()
-    avoid.run()
+
+    # Case 1 - Crossing
+    #traj1 = generate_straight_trajectory(-1,0,0,1,0.1) # Trajectory from x=-1, y=0 driving straight to the right
+    #traj2 = generate_straight_trajectory(0,-1,cs.pi/2,1,0.1) # Trajectory from x=0,y=-1 driving straight up
+    #avoid.run(traj1, traj2)
+
+    # Case 2 - Towards eachother
+    traj1 = generate_straight_trajectory(-1,0,0,1,0.1) # Trajectory from x=-1, y=0 driving straight to the right
+    traj2 = generate_straight_trajectory(1,0,-cs.pi,1,0.1) # Trajectory from x=0,y=-1 driving straight up
+    avoid.run(traj1, traj2)
+
+    # Case 3 - Behind eachother
+    #traj1 = generate_straight_trajectory(-1,0,0,1,0.1) # Trajectory from x=-1, y=0 driving straight to the right
+    #traj2 = generate_straight_trajectory(-1.5,0,0,1.3,0.1) # Trajectory from x=0,y=-1 driving straight up
+    #avoid.run(traj1, traj2)
+
+    avoid.mng.kill()

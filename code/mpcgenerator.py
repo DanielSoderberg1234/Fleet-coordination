@@ -12,15 +12,19 @@ class MPCGenerator:
         self.name = "Fleet-collison"
 
     def cost_state_ref(self,x,y,theta,xref,yref,thetaref,q,qtheta): 
+        # Cost for deviating from the current reference
         return q*( (xref-x)**2 + (yref-y)**2 ) + qtheta*(thetaref-theta)**2
 
     def cost_robot2robot_dist(self,x1,y1,x2,y2,qobs): 
+        # Cost for being closer than r to the other robot
         return qobs*cs.fmax(0.0, 0.25**2 - (x1-x2)**2 - (y1-y2)**2)
     
     def cost_control_action(self,u,r): 
+        # Cost for the control action
         return r*cs.dot(u, u)
 
     def bound_control_action(self, vmin,vmax,wmin,wmax,N): 
+        # But hard constraints on the velocities of the robot
         N = 2*N
         umin = [vmin,wmin]*N
         umax = [vmax,wmax]*N
@@ -28,20 +32,22 @@ class MPCGenerator:
 
     def generate_mpc_formulation(self): 
 
-        # Some states
+        # Some predefined values, should maybe be read from a config file?
         (nu, nx, N, ts) = (2, 3, 20, 0.1)
 
-        # Optimization varibales 
-        #p = cs.SX.sym('p',nx*N+6)
-        #u = cs.SX.sym('u',nu*N)
-
+        # Input vector
         p = cs.SX.sym('p',2*nx*N+6)
+
+        # Optimization variables
         u = cs.SX.sym('u',2*nu*N)
 
+        # First part of p is the trajectory reference for the first robot
         ref1 = p[:N*nx]
+
+        # Second part of p is the trajectory reference for the second robot
         ref2 = p[N*nx:2*N*nx]
 
-
+        # Define the structure of the optimization variables
         u1 = u[:nu*N]
         u2 = u[nu*N:]
 
@@ -49,11 +55,8 @@ class MPCGenerator:
         x1,y1,theta1 = p[0],p[1],p[2]
         x2,y2,theta2 = p[nx*N],p[nx*N+1],p[nx*N+2]
 
-        # Get weights
+        # Get weights from input vectir as the last elements
         q, qtheta, r, qN, qthetaN,qobs = p[-6],p[-5],p[-4],p[-3],p[-2],p[-1]
-
-        # Get the reference
-        #ref = p[:-5]
 
         # Define the cost
         cost = 0
@@ -94,7 +97,7 @@ class MPCGenerator:
         cost += self.cost_state_ref(x2,y2,theta2,xref2,yref2,thetaref2,qN,qthetaN)
 
         # Get the bounds for the control action
-        bounds = self.bound_control_action(vmin=-1,vmax=1,wmin=-1,wmax=1,N=N)
+        bounds = self.bound_control_action(vmin=-1.5,vmax=1.5,wmin=-1,wmax=1,N=N)
 
         return u,p,cost,bounds
 
