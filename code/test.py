@@ -1,18 +1,11 @@
-import casadi.casadi as cs
-import numpy as np 
 import matplotlib.pyplot as plt
+import warnings
+warnings.filterwarnings("ignore")
+import numpy as np
 
-x = []
-y = []
+x1 = 1
+y1 = 2
+ang = np.linspace(0,2*np.pi,100)
 
-
-for i in range(0,3):
-    x.append(i)
-    y.append(i)
-
-    plt.plot(x,y,'-o','r')
-    plt.pause(1)
-
-plt.xaxis([-5,5])
-plt.yaxis([-5,5])
+plt.plot(x1+np.cos(ang), y1+np.sin(ang))
 plt.show()

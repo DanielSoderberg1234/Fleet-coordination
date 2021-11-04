@@ -4,6 +4,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from function_lib import model
 
+"""
+    A file that generates the MPC formulation.
+"""
 class MPCGenerator: 
     def __init__(self): 
         self.name = "Fleet-collison"

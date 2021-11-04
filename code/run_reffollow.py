@@ -4,6 +4,45 @@ import casadi.casadi as cs
 from function_lib import model, generate_straight_trajectory
 import opengen as og
 
+"""
+ A file for testing the MPC. 
+ Calls the MPC and modifies the trajectories once
+ then it runs the robots with the assumption that they 
+ follow exactly. It plots the predicted path, where it is
+ at and a 0.25 m distance constrain.
+"""
+def control_action_to_trajectory(x,y,theta,u,ts): 
+        # Get the linear and angular velocities
+        v = u[0::2]
+        w = u[1::2]
+
+        # Create a list of x and y states
+        xlist = [x]
+        ylist = [y]
+
+        for vi,wi in zip(v,w): 
+            x,y,theta = model(x,y,theta,[vi,wi],ts)
+            xlist.append(x)
+            ylist.append(y)
+
+        return xlist,ylist
+
+def plot_again(x1,y1,x2,y2, past_traj1x, past_traj1y, past_traj2x,past_traj2y): 
+        plt.cla()
+        ang = np.linspace(0,2*np.pi,100)
+        r=0.25
+
+        plt.plot(past_traj1x,past_traj1y,'-o',color='r',label="Actual1")
+        plt.plot(x1[1:],y1[1:],'-o',color='r',alpha=0.2, label="Predicted1")
+        plt.plot(x1[0]+r*np.cos(ang), y1[0]+r*np.sin(ang),color='k')
+
+        plt.plot(past_traj2x,past_traj2y,'-o',color='b',label="Actual2")
+        plt.plot(x2[1:],y2[1:],'-o',color='b',alpha=0.2, label="Predicted2")
+        plt.plot(x2[0]+r*np.cos(ang), y2[0]+r*np.sin(ang),color='k')
+
+        plt.xlim(-1.5,1.5)
+        plt.ylim(-1.5,1.5)
+        plt.legend()
 
 # Some parameters
 nu = 2
@@ -33,64 +72,29 @@ u_star = solution['solution']
 
 # Get the generated trajectory for the first robot
 u1 = u_star[:nu*N]
-v1 = u1[0::2]
-w1 = u1[1::2]
-
-
 x1,y1,theta1 = -1,0,0
 ts = 0.1
-
-xlist1 = []
-ylist1 = []
-
-xlist1.append(x1)
-ylist1.append(y1)
-
-for vi,wi in zip(v1,w1): 
-    x1,y1,theta1 = model(x1,y1,theta1,[vi,wi],ts)
-    xlist1.append(x1)
-    ylist1.append(y1)
-
-
-# Get the generated trajectory for the second robot
 u2 = u_star[nu*N:]
-v2 = u2[0::2]
-w2 = u2[1::2]
-
 x2,y2,theta2 = 0,-1,cs.pi/2
-ts = 0.1
 
-xlist2 = []
-ylist2 = []
+xlist1, ylist1 = control_action_to_trajectory(x1,y1,theta1,u1,ts)
+xlist2, ylist2 = control_action_to_trajectory(x2,y2,theta2,u2,ts)
 
-xlist2.append(x2)
-ylist2.append(y2)
+past_traj1x, past_traj1y = [],[]
+past_traj2x, past_traj2y = [],[]
 
-for vi,wi in zip(v2,w2): 
-    x2,y2,theta2 = model(x2,y2,theta2,[vi,wi],ts)
-    xlist2.append(x2)
-    ylist2.append(y2)
-
-# Plot the solutions stationary
-ref1x = states1[0::3]
-ref1y = states1[1::3]
-ref2x = states2[0::3]
-ref2y = states2[1::3]
-plt.subplot(1,2,1)
-plt.plot(ref1x,ref1y,'-o',label="Reference1")
-plt.plot(ref2x,ref2y,'-o',label="Reference2")
-plt.plot(xlist1,ylist1,'-o', label="Generated1")
-plt.plot(xlist2,ylist2,'-o', label="Generated2")
-
-# Plot the sultions interactively
-plt.subplot(1,2,2)
-for i in range(0,21):
-    #plt.pause(5)
-    plt.plot(xlist1[:i],ylist1[:i],'-o')
-    plt.plot(xlist2[:i],ylist2[:i],'-o')
-    plt.pause(1)
+plt.show(block=False)
+for i in range(0,21): 
+    past_traj1x.append(xlist1[0])
+    past_traj1y.append(ylist1[0])
+    past_traj2x.append(xlist2[0])
+    past_traj2y.append(ylist2[0])
+    plot_again(xlist1,ylist1,xlist2,ylist2,past_traj1x,past_traj1y,past_traj2x, past_traj2y)
+    plt.pause(0.5)
+    xlist1 = xlist1[1:]
+    ylist1 = ylist1[1:]
+    xlist2 = xlist2[1:]
+    ylist2 = ylist2[1:]
 
 
-print(len(xlist1))
-plt.legend()
-plt.show()
+
