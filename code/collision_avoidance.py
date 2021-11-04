@@ -23,11 +23,11 @@ class CollisionAvoidance:
         self.N = 20 # Length of horizon 
         self.ts = 0.1 # Sampling time
         q = 0.1
-        qtheta = 1
+        qtheta = 100
         r = 0.1
         qN = 0.1
-        qthetaN = 1
-        qobs = 1000000
+        qthetaN = 100
+        qobs = 100
         self.weights = [q,qtheta,r,qN,qthetaN,qobs]
 
         # Create the solver and open a tcp port to it 
@@ -108,6 +108,7 @@ class CollisionAvoidance:
         # Initial states
         x1,y1,theta1 = traj1[0],traj1[1], traj1[2]
         x2,y2,theta2 = traj2[0],traj2[1], traj2[2]
+        
 
         # Get the trajectories
         xlist1, ylist1 = self.control_action_to_trajectory(x1,y1,theta1,u1)
@@ -117,6 +118,23 @@ class CollisionAvoidance:
         self.plot_again(xlist1,ylist1,xlist2,ylist2)
         plt.pause(0.5)
 
+        # Remove first state point and continue
+        [traj1.pop(0) for i in range(0,3)]
+        [traj2.pop(0) for i in range(0,3)]
+        
+        # Append last state to make sure that N = 20
+        [traj1.append(traj1[-3]) for i in range(0,3)]
+        [traj2.append(traj2[-3]) for i in range(0,3)]
+
+        # The state we are at is given by applying the first control input
+        x1,y1,theta1 = model(x1,y1,theta1,u1[:2],self.ts)
+        x2,y2,theta2 = model(x2,y2,theta2,u2[:2],self.ts)
+
+        traj1[:3] = [x1,y1,theta1]
+        traj2[:3] = [x2,y2,theta2]
+
+        return traj1, traj2
+
     def run(self): 
         # Make sure that the plots are non-blocking
         plt.show(block=False)
@@ -124,21 +142,10 @@ class CollisionAvoidance:
         traj1 = generate_straight_trajectory(-1,0,0,1,0.1) # Trajectory from x=-1, y=0 driving straight to the right
         traj2 = generate_straight_trajectory(0,-1,cs.pi/2,1,0.1) # Trajectory from x=0,y=-1 driving straight up
 
-        # Run for inital trajctories
-        self.run_one_iteration(traj1, traj2)
-
         # Run from the next step
         for j in range(0,self.N-1):    
-            # Remove first state point and continue
-            [traj1.pop(0) for i in range(0,3)]
-            [traj2.pop(0) for i in range(0,3)]
-            
-            # Append last state to make sure that N = 20
-            [traj1.append(traj1[-3]) for i in range(0,3)]
-            [traj2.append(traj2[-3]) for i in range(0,3)]
-        
             # Run collision avoidance again
-            self.run_one_iteration(traj1, traj2)
+            traj1, traj2 = self.run_one_iteration(traj1, traj2)
 
         self.mng.kill()
 
