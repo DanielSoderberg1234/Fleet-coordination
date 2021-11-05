@@ -26,7 +26,7 @@ class CollisionAvoidance:
         qtheta = 1 # Cost of deviating from angle reference
         r = 0.1 # Cost for control action
         qN = 100 # Final cost of deviating from x and y reference
-        qthetaN = 10 # Final cost of deviating from angle reference
+        qthetaN = 1000 # Final cost of deviating from angle reference
         qobs = 200 # Cost for being closer than r to the other robot
         self.weights = [q,qtheta,r,qN,qthetaN,qobs]
 
@@ -67,7 +67,29 @@ class CollisionAvoidance:
 
         return xlist,ylist
 
-    def plot_again(self,x1,y1,x2,y2): 
+    def plot_robot(self,x,y,theta): 
+        # Width of robot
+        width = 0.5
+        length = 0.7
+
+        # Define rectangular shape of the robot
+        corners = np.array([[length/2,width/2], 
+                            [length/2,-width/2],
+                            [-length/2,-width/2],
+                            [-length/2,width/2],
+                            [length/2,width/2]]).T
+        
+        # Define rotation matrix
+        rot = np.array([[ np.cos(theta), -np.sin(theta)],[ np.sin(theta), np.cos(theta)]])
+
+        # Rotate rectangle with the current angle
+        rot_corners = rot@corners
+
+        # Plot the robot with center x,y
+        plt.plot(x+rot_corners[0,:], y+rot_corners[1,:],color='k')
+
+
+    def plot_again(self,x1,y1,theta1,x2,y2,theta2): 
         # Append to the actual path taken
         self.past_traj1x.append(x1[0])
         self.past_traj1y.append(y1[0])
@@ -78,20 +100,34 @@ class CollisionAvoidance:
 
         plt.cla()
         ang = np.linspace(0,2*np.pi,100)
-        r=0.25
+        r=1.0
 
         plt.plot(self.past_traj1x,self.past_traj1y,'-o',color='r',label="Actual1")
         plt.plot(x1[1:],y1[1:],'-o',color='r',alpha=0.2, label="Predicted1")
-        plt.plot(x1[0]+r*np.cos(ang), y1[0]+r*np.sin(ang),color='k')
+        plt.plot(x1[0]+r*np.cos(ang), y1[0]+r*np.sin(ang),'-',color='k')
+        self.plot_robot(x1[0],y1[0],theta1)
 
         plt.plot(self.past_traj2x,self.past_traj2y,'-o',color='b',label="Actual2")
         plt.plot(x2[1:],y2[1:],'-o',color='b',alpha=0.2, label="Predicted2")
-        plt.plot(x2[0]+r*np.cos(ang), y2[0]+r*np.sin(ang),color='k')
+        plt.plot(x2[0]+r*np.cos(ang), y2[0]+r*np.sin(ang),'-',color='k')
+        self.plot_robot(x2[0],y2[0],theta2)
 
-        plt.xlim(-2,2)
-        plt.ylim(-2,2)
+        plt.xlim(-3,3)
+        plt.ylim(-3,3)
         plt.legend()
-        
+        plt.pause(0.1)
+
+    def update_reference_trajectory(self,traj,rest):
+        # Modify the reference trajectory
+        if len(rest) == 0: 
+            # If we have no more points to append to our trajectory, 
+            # Just add the last point
+            traj.extend(traj[-3:])
+        else: 
+            traj.extend(rest[:3])
+            rest = rest[3:]
+
+        return traj, rest
 
     def run_one_iteration(self, traj1,traj2): 
         # Get the input
@@ -115,20 +151,15 @@ class CollisionAvoidance:
         xlist2, ylist2 = self.control_action_to_trajectory(x2,y2,theta2,u2)
 
         # Plot the trajectories   
-        self.plot_again(xlist1,ylist1,xlist2,ylist2)
-        plt.pause(0.5)
+        self.plot_again(xlist1,ylist1,theta1,xlist2,ylist2,theta2)
 
         # Remove first state point and continue
         [traj1.pop(0) for i in range(0,3)]
         [traj2.pop(0) for i in range(0,3)]
         
-        # Append last state to make sure that N = 20
-        [traj1.append(traj1[-3]) for i in range(0,3)]
-        [traj2.append(traj2[-3]) for i in range(0,3)]
-
         # The state we are at is given by applying the first control input
-        x1,y1,theta1 = model(x1,y1,theta1,u1[:2],self.ts)
-        x2,y2,theta2 = model(x2,y2,theta2,u2[:2],self.ts)
+        x1,y1,theta1 = model(x1,y1,theta1,u1[:self.nu],self.ts)
+        x2,y2,theta2 = model(x2,y2,theta2,u2[:self.nu],self.ts)
 
         traj1[:3] = [x1,y1,theta1]
         traj2[:3] = [x2,y2,theta2]
@@ -138,11 +169,19 @@ class CollisionAvoidance:
     def run(self, traj1, traj2): 
         # Make sure that the plots are non-blocking
         plt.show(block=False)
+
+        rest1 = traj1[(self.N+1)*self.nx:]
+        rest2 = traj2[(self.N+1)*self.nx:]
+
+        traj1 = traj1[:(self.N+1)*self.nx]
+        traj2 = traj2[:(self.N+1)*self.nx]
         
         # Run from the next step
-        for j in range(0,self.N-1):    
+        for j in range(0,40+1):    
             # Run collision avoidance again
             traj1, traj2 = self.run_one_iteration(traj1, traj2)
+            traj1, rest1= self.update_reference_trajectory(traj1, rest1)
+            traj2, rest2 = self.update_reference_trajectory(traj2, rest2)
 
         plt.pause(2)
         plt.close()
@@ -151,18 +190,18 @@ if __name__=="__main__":
     avoid = CollisionAvoidance()
 
     # Case 1 - Crossing
-    #traj1 = generate_straight_trajectory(-1,0,0,1,0.1) # Trajectory from x=-1, y=0 driving straight to the right
-    #traj2 = generate_straight_trajectory(0,-1,cs.pi/2,1,0.1) # Trajectory from x=0,y=-1 driving straight up
+    #traj1 = generate_straight_trajectory(x=-2,y=0,theta=0,v=1,ts=0.1,N=40) # Trajectory from x=-1, y=0 driving straight to the right
+    #traj2 = generate_straight_trajectory(x=0,y=-2,theta=cs.pi/2,v=1,ts=0.1,N=40) # Trajectory from x=0,y=-1 driving straight up
     #avoid.run(traj1, traj2)
 
     # Case 2 - Towards eachother
-    traj1 = generate_straight_trajectory(-1,0,0,1,0.1) # Trajectory from x=-1, y=0 driving straight to the right
-    traj2 = generate_straight_trajectory(1,0,-cs.pi,1,0.1) # Trajectory from x=0,y=-1 driving straight up
-    avoid.run(traj1, traj2)
+    #traj1 = generate_straight_trajectory(x=-2,y=0,theta=0,v=1,ts=0.1,N=40) # Trajectory from x=-1, y=0 driving straight to the right
+    #traj2 = generate_straight_trajectory(x=2,y=0,theta=-cs.pi,v=1,ts=0.1,N=40) # Trajectory from x=0,y=-1 driving straight up
+    #avoid.run(traj1, traj2)
 
     # Case 3 - Behind eachother
-    #traj1 = generate_straight_trajectory(-1,0,0,1,0.1) # Trajectory from x=-1, y=0 driving straight to the right
-    #traj2 = generate_straight_trajectory(-1.5,0,0,1.3,0.1) # Trajectory from x=0,y=-1 driving straight up
-    #avoid.run(traj1, traj2)
+    traj1 = generate_straight_trajectory(x=-1,y=0,theta=0,v=1,ts=0.1,N=40) # Trajectory from x=-1, y=0 driving straight to the right
+    traj2 = generate_straight_trajectory(x=-2.1,y=0,theta=0,v=1.3,ts=0.1,N=40) # Trajectory from x=0,y=-1 driving straight up
+    avoid.run(traj1, traj2)
 
     avoid.mng.kill()

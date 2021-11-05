@@ -50,8 +50,8 @@ N = 20
 
 # Define weights and and get the reference trajectories
 weights = [0.1,100,0.01,0.1,100,100]
-states1 = generate_straight_trajectory(-1,0,0,1,0.1) # Trajectory from x=-1, y=0 driving straight to the right
-states2 = generate_straight_trajectory(0,-1,cs.pi/2,1,0.1) # Trajectory from x=0,y=-1 driving straight up
+states1 = generate_straight_trajectory(-1,0,0,1,0.1,20) # Trajectory from x=-1, y=0 driving straight to the right
+states2 = generate_straight_trajectory(0,-1,cs.pi/2,1,0.1,20) # Trajectory from x=0,y=-1 driving straight up
 
 # Create the input vector
 p = []
