@@ -167,5 +167,5 @@ class MPCGenerator:
        
 
 if __name__=='__main__':
-    mpc = MPCGenerator(nr_of_robots=4)
+    mpc = MPCGenerator(nr_of_robots=2)
     mpc.build_mpc()

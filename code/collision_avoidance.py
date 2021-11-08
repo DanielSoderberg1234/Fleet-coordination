@@ -179,7 +179,6 @@ class CollisionAvoidance:
 
 if __name__=="__main__": 
 
-    """
     # Case 1 - Crossing
     avoid = CollisionAvoidance(nr_of_robots=2)
     traj1 = generate_straight_trajectory(x=-2,y=0,theta=0,v=1,ts=0.1,N=40) # Trajectory from x=-1, y=0 driving straight to the right
@@ -230,5 +229,6 @@ if __name__=="__main__":
 
     avoid.run(robots)
     avoid.mng.kill()
+    """
 
     
