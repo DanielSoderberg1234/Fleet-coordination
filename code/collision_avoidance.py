@@ -40,7 +40,7 @@ class CollisionAvoidance:
         self.mng.ping()
 
         self.dist = {}
-        for comb in combinations([0,1,2],2): 
+        for comb in combinations(range(0,self.nr_of_robots),2): 
             self.dist[comb] = []
 
 
@@ -214,17 +214,19 @@ if __name__=="__main__":
     avoid.mng.kill()
     """
 
-    # Case 4 - 3 robots
-    avoid = CollisionAvoidance(nr_of_robots=3)
+    # Case 4 - 4 robots
+    avoid = CollisionAvoidance(nr_of_robots=4)
     traj1 = generate_straight_trajectory(x=-3,y=0,theta=0,v=1,ts=0.1,N=60) # Trajectory from x=-1, y=0 driving straight to the right
     traj2 = generate_straight_trajectory(x=3,y=0,theta=-cs.pi,v=1,ts=0.1,N=60) # Trajectory from x=0,y=-1 driving straight up
-    traj3 = generate_straight_trajectory(x=0,y=-2,theta=cs.pi/2,v=1,ts=0.1,N=60) # Trajectory from x=0,y=-1 driving straight up
+    traj3 = generate_straight_trajectory(x=1,y=-2,theta=cs.pi/2,v=1,ts=0.1,N=60) # Trajectory from x=0,y=-1 driving straight up
+    traj4 = generate_straight_trajectory(x=-1,y=-2,theta=cs.pi/2,v=1,ts=0.1,N=60) # Trajectory from x=0,y=-1 driving straight up
     
     N = 20
     robots = {}
     robots[0] = {"State": traj1[:3], 'Ref': traj1[3:N*3+3], 'Remainder': traj1[N*3+3:], 'u': [], 'Past_x': [], 'Past_y': [], 'Color': 'r'}
     robots[1] = {"State": traj2[:3], 'Ref': traj2[3:N*3+3], 'Remainder': traj2[N*3+3:], 'u': [], 'Past_x': [], 'Past_y': [], 'Color': 'b'}
     robots[2] = {"State": traj3[:3], 'Ref': traj3[3:N*3+3], 'Remainder': traj3[N*3+3:], 'u': [], 'Past_x': [], 'Past_y': [], 'Color': 'g'}
+    robots[3] = {"State": traj4[:3], 'Ref': traj4[3:N*3+3], 'Remainder': traj4[N*3+3:], 'u': [], 'Past_x': [], 'Past_y': [], 'Color': 'm'}
 
     avoid.run(robots)
     avoid.mng.kill()
