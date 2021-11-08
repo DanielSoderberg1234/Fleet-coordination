@@ -9,9 +9,9 @@ from itertools import combinations
     A file that generates the MPC formulation.
 """
 class MPCGenerator: 
-    def __init__(self): 
+    def __init__(self, nr_of_robots): 
         self.name = "Fleet-collison"
-        self.nr_of_robots = 2
+        self.nr_of_robots = nr_of_robots
 
     def cost_state_ref(self,x,y,theta,xref,yref,thetaref,q,qtheta): 
         # Cost for deviating from the current reference
@@ -25,9 +25,9 @@ class MPCGenerator:
         # Loop over all robots 
         for robot_id in robots: 
             # Extract the content for each robot
-            x,y,theta = robots[robot_id][0]
-            u = robots[robot_id][1]
-            ref = robots[robot_id][2]
+            x,y,theta = robots[robot_id]['State']
+            u = robots[robot_id]['u']
+            ref = robots[robot_id]['Ref']
 
             # Get the data for the current steps
             refi = ref[i:i+nx]
@@ -44,24 +44,24 @@ class MPCGenerator:
 
         for robot_id in robots: 
             # Extract the content for each robot
-            x,y,theta = robots[robot_id][0]
-            u = robots[robot_id][1]
+            x,y,theta = robots[robot_id]['State']
+            u = robots[robot_id]['u']
             uj = u[j:j+nu]
             x,y,theta = model(x,y,theta,uj,ts)
-            robots[robot_id][0] = [x,y,theta]
+            robots[robot_id]['State'] = [x,y,theta]
 
 
     def cost_robot2robot_dist(self,x1,y1,x2,y2,qobs): 
         # Cost for being closer than r to the other robot
-        return qobs*cs.fmax(0.0, 1**2 - (x1-x2)**2 - (y1-y2)**2)
+        return qobs*cs.fmax(0.0, 1.0**2 - (x1-x2)**2 - (y1-y2)**2)
 
     def cost_collision(self,robots, qobs):
         cost = 0 
         # Iterate over all pairs of robots
         for comb in combinations(range(0,self.nr_of_robots),2):
-            x1,y1,theta1 = robots[comb[0]][0]
-            x2,y2,theta2 = robots[comb[1]][0]
-            cost = +self.cost_robot2robot_dist(x1,y1,x2,y2,qobs)
+            x1,y1,theta1 = robots[comb[0]]['State']
+            x2,y2,theta2 = robots[comb[1]]['State']
+            cost += self.cost_robot2robot_dist(x1,y1,x2,y2,qobs)
 
         return cost
         
@@ -76,8 +76,8 @@ class MPCGenerator:
 
         for robot_id in robots: 
             # Extract the content for each robot
-            x,y,theta = robots[robot_id][0]
-            u = robots[robot_id][1]
+            x,y,theta = robots[robot_id]['State']
+            u = robots[robot_id]['u']
             uj = u[j:j+nu]
             cost += self.cost_control_action(uj,r)
         
@@ -86,7 +86,7 @@ class MPCGenerator:
 
     def bound_control_action(self, vmin,vmax,wmin,wmax,N): 
         # But hard constraints on the velocities of the robot
-        N = 2*N
+        N = self.nr_of_robots*N
         umin = [vmin,wmin]*N
         umax = [vmax,wmax]*N
         return og.constraints.Rectangle(umin, umax)
@@ -113,7 +113,8 @@ class MPCGenerator:
             x_r,y_r,theta_r = ref_r[0], ref_r[1], ref_r[2]
 
             # All data for robot i, current state, control inputs for all states, reference for all states
-            robots[i] = [[x_r,y_r,theta_r], u_r, ref_r]
+            robots[i] = {"State": [x_r,y_r,theta_r], 'u': u_r, 'Ref': ref_r}
+
         
         # Get weights from input vectir as the last elements
         q, qtheta, r, qN, qthetaN,qobs = p[-6],p[-5],p[-4],p[-3],p[-2],p[-1]
@@ -129,12 +130,14 @@ class MPCGenerator:
             # Update the states
             self.update_robot_states(robots,i,j,ts)
             # Calculate the cost of colliding
-            cost += self.cost_collision(robots, qobs)
+            cost += self.cost_collision(robots, qobs)  
+            
+
         # Cost for deviating from final reference points
         cost += self.cost_deviation_ref(robots,nx*N,nu*N,qN,qthetaN)
 
         # Get the bounds for the control action
-        bounds = self.bound_control_action(vmin=-1.5,vmax=1.5,wmin=-1,wmax=1,N=N)
+        bounds = self.bound_control_action(vmin=0.0,vmax=1.5,wmin=-1,wmax=1,N=N)
 
         return u,p,cost,bounds
 
@@ -146,12 +149,12 @@ class MPCGenerator:
                   
 
         build_config = og.config.BuildConfiguration()\
-            .with_build_directory("reffollow")\
+            .with_build_directory("collision_avoidance")\
             .with_build_mode("debug")\
             .with_tcp_interface_config()
 
         meta = og.config.OptimizerMeta()\
-            .with_optimizer_name("version1")
+            .with_optimizer_name("robot_{}_solver".format(self.nr_of_robots))
 
         solver_config = og.config.SolverConfiguration()\
             .with_tolerance(1e-5)\
@@ -164,5 +167,5 @@ class MPCGenerator:
        
 
 if __name__=='__main__':
-    mpc = MPCGenerator()
+    mpc = MPCGenerator(nr_of_robots=3)
     mpc.build_mpc()

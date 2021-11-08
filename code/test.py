@@ -1,10 +1,9 @@
-import imp
 import matplotlib.pyplot as plt
 import warnings
 warnings.filterwarnings("ignore")
 import numpy as np
 from scipy.spatial import ConvexHull
-import cdd
+#import cdd
 from function_lib import compute_polytope_halfspaces
 import casadi.casadi as cs
 from itertools import combinations
@@ -28,5 +27,12 @@ print(outside_pol)
 a = [1,2,3,4,5]
 print(a[-3:])
 """
-for comb in combinations(range(0,2),2):
-    print(comb)
+dist = {}
+
+i = 1
+for comb in combinations([0,1,2],2): 
+    dist[comb] = []
+    i+=1
+
+for comb in combinations([0,1,2],2): 
+    print(dist[comb])

@@ -5,6 +5,7 @@ from function_lib import model, generate_straight_trajectory
 import opengen as og
 import warnings
 warnings.filterwarnings("ignore")
+from itertools import combinations
 
 """
  A file for testing the MPC. 
@@ -16,7 +17,7 @@ warnings.filterwarnings("ignore")
 
 
 class CollisionAvoidance: 
-    def __init__(self):
+    def __init__(self, nr_of_robots):
         # Some parameters 
         self.nx = 3 # Number of states for each robot
         self.nu = 2 # Nr of control inputs
@@ -24,34 +25,24 @@ class CollisionAvoidance:
         self.ts = 0.1 # Sampling time
         q = 10 # Cost of deviating from x and y reference
         qtheta = 1 # Cost of deviating from angle reference
-        r = 0.1 # Cost for control action
+        r = 0.01 # Cost for control action
         qN = 100 # Final cost of deviating from x and y reference
-        qthetaN = 1000 # Final cost of deviating from angle reference
+        qthetaN = 10 # Final cost of deviating from angle reference
         qobs = 200 # Cost for being closer than r to the other robot
         self.weights = [q,qtheta,r,qN,qthetaN,qobs]
 
+        # Number of robots 
+        self.nr_of_robots = nr_of_robots
+
         # Create the solver and open a tcp port to it 
-        self.mng = og.tcp.OptimizerTcpManager('reffollow/version1')
+        self.mng = og.tcp.OptimizerTcpManager('collision_avoidance/robot_{}_solver'.format(self.nr_of_robots))
         self.mng.start()
         self.mng.ping()
 
-        # Past trajectories
-        self.past_traj1x = []
-        self.past_traj1y = []
+        self.dist = {}
+        for comb in combinations([0,1,2],2): 
+            self.dist[comb] = []
 
-        self.past_traj2x = []
-        self.past_traj2y = []
-
-        self.dist = []
-        
-
-    def get_input(self, traj1, traj2):
-        # Create the input vector
-        p = []
-        p.extend(traj1)
-        p.extend(traj2)
-        p.extend(self.weights)
-        return p
 
     def control_action_to_trajectory(self,x,y,theta,u): 
         # Get the linear and angular velocities
@@ -59,8 +50,8 @@ class CollisionAvoidance:
         w = u[1::2]
 
         # Create a list of x and y states
-        xlist = [x]
-        ylist = [y]
+        xlist = []
+        ylist = []
 
         for vi,wi in zip(v,w): 
             x,y,theta = model(x,y,theta,[vi,wi],self.ts)
@@ -68,6 +59,19 @@ class CollisionAvoidance:
             ylist.append(y)
 
         return xlist,ylist
+
+    def update_state(self, robot): 
+        x,y,theta = robot['State']
+        x,y,theta = model(x,y,theta,robot['u'][:2],self.ts)
+        robot['State'] = [x,y,theta]
+
+    def update_ref(self,robot):
+        # Shift reference once step to the left
+        robot['Ref'][:self.nx*(self.N-1)] = robot['Ref'][self.nx:]
+
+        if len(robot['Remainder']) > 0:
+            robot['Ref'][-self.nx:] = robot['Remainder'][:self.nx]
+            del robot['Remainder'][:self.nx]
 
     def plot_robot(self,x,y,theta): 
         # Width of robot
@@ -89,138 +93,140 @@ class CollisionAvoidance:
 
         # Plot the robot with center x,y
         plt.plot(x+rot_corners[0,:], y+rot_corners[1,:],color='k')
+    
+    def plot_safety_cricles(self, x,y): 
+        ang = np.linspace(0,2*np.pi,100)
+        r=1.0
+        plt.plot(x+r*np.cos(ang), y+r*np.sin(ang),'-',color='k')
 
-    def plot_dist(self,x1,y1,x2,y2): 
-        dist = np.sqrt( (x2-x1)**2 + (y2-y1)**2 )
-        self.dist.append(dist)
-        lim_dist = 1
+    def plot_for_one_robot(self,robot):
+        x,y,theta = robot['State']
+
+        # Calculate all fute x and y states
+        x_pred, y_pred = self.control_action_to_trajectory(x,y,theta,robot['u'])
+
+        # Save the states that we have been to
+        robot['Past_x'].append(x)
+        robot['Past_y'].append(y)
+
+        plt.plot(robot['Past_x'],robot['Past_y'],'-o', color=robot['Color'])
+        plt.plot(x_pred,y_pred,'-o', alpha=0.2,color=robot['Color'])
+        self.plot_robot(x,y,theta)
+        #self.plot_safety_cricles(x,y)
+
+    def plot_dist(self,robots): 
+        
         plt.subplot(1,2,2)
         plt.cla()
-        plt.plot(self.dist, label="R1 to R2 ")
-        plt.plot(range(0,len(self.dist)), [lim_dist]*len(self.dist), label="Limit")
+        for comb in combinations(range(0,self.nr_of_robots),2):
+            x1,y1,theta1 = robots[comb[0]]['State']
+            x2,y2,theta2 = robots[comb[1]]['State']   
+            dist = np.sqrt( (x2-x1)**2 + (y2-y1)**2 )
+            self.dist[comb].append(dist)
+            plt.plot(self.dist[comb], label="Distance for {}".format(comb))
+            lim_dist = 1
+            plt.plot(range(0,len(self.dist[comb])), [lim_dist]*len(self.dist[comb]), label="Limit")
+
+        
         plt.legend()
         plt.title("Distance")
 
+        
+    def get_input(self, robots):
+        # Create the input vector
+        p = []
 
-    def plot_again(self,x1,y1,theta1,x2,y2,theta2): 
-        # Append to the actual path taken
-        self.past_traj1x.append(x1[0])
-        self.past_traj1y.append(y1[0])
+        for robot_id in robots: 
+            p.extend(robots[robot_id]['State'])
+            p.extend(robots[robot_id]['Ref'])
 
-        # Append to the actual path taken
-        self.past_traj2x.append(x2[0])
-        self.past_traj2y.append(y2[0])
+        p.extend(self.weights)
+        return p
 
-        plt.cla()
-        ang = np.linspace(0,2*np.pi,100)
-        r=1.0
-
-        plt.subplot(1,2,1)
-        plt.cla()
-        plt.plot(self.past_traj1x,self.past_traj1y,'-o',color='r',label="Actual1")
-        plt.plot(x1[1:],y1[1:],'-o',color='r',alpha=0.2, label="Predicted1")
-        #plt.plot(x1[0]+r*np.cos(ang), y1[0]+r*np.sin(ang),'-',color='k')
-        self.plot_robot(x1[0],y1[0],theta1)
-
-        plt.plot(self.past_traj2x,self.past_traj2y,'-o',color='b',label="Actual2")
-        plt.plot(x2[1:],y2[1:],'-o',color='b',alpha=0.2, label="Predicted2")
-        #plt.plot(x2[0]+r*np.cos(ang), y2[0]+r*np.sin(ang),'-',color='k')
-        self.plot_robot(x2[0],y2[0],theta2)
-
-        plt.xlim(-3,3)
-        plt.ylim(-3,3)
-        plt.legend()
-        plt.title("Map")
-
-        self.plot_dist(x1[0],y1[0],x2[0],y2[0])
-        plt.pause(0.1)
-
-    def update_reference_trajectory(self,traj,rest):
-        # Modify the reference trajectory
-        if len(rest) == 0: 
-            # If we have no more points to append to our trajectory, 
-            # Just add the last point
-            traj.extend(traj[-3:])
-        else: 
-            traj.extend(rest[:3])
-            rest = rest[3:]
-
-        return traj, rest
-
-    def run_one_iteration(self, traj1,traj2): 
-        # Get the input
-        mpc_input = self.get_input(traj1,traj2)
+    def run_one_iteration(self,robots): 
+        mpc_input = self.get_input(robots)
 
         # Call the solver
-        solution = self.mng.call(p=mpc_input, initial_guess=[1.0] * (2*self.nu*self.N))
+        solution = self.mng.call(p=mpc_input, initial_guess=[1.0] * (self.nr_of_robots*self.nu*self.N))
 
         # Get the solver output 
         u_star = solution['solution']
-        u1 = u_star[:self.nu*self.N]
-        u2 = u_star[self.nu*self.N:]
-
-        # Initial states
-        x1,y1,theta1 = traj1[0],traj1[1], traj1[2]
-        x2,y2,theta2 = traj2[0],traj2[1], traj2[2]
         
+        for i in range(0,self.nr_of_robots):
+            robots[i]['u'] = u_star[self.nu*self.N*i:self.nu*self.N*(i+1)]
 
-        # Get the trajectories
-        xlist1, ylist1 = self.control_action_to_trajectory(x1,y1,theta1,u1)
-        xlist2, ylist2 = self.control_action_to_trajectory(x2,y2,theta2,u2)
-
-        # Plot the trajectories   
-        self.plot_again(xlist1,ylist1,theta1,xlist2,ylist2,theta2)
-
-        # Remove first state point and continue
-        [traj1.pop(0) for i in range(0,3)]
-        [traj2.pop(0) for i in range(0,3)]
+        plt.subplot(1,2,1)
+        plt.cla()
+        for robot_id in robots: 
+            self.plot_for_one_robot(robots[robot_id])
+        plt.xlim(-5,5)
+        plt.ylim(-5,5)
+        self.plot_dist(robots)
+        plt.pause(0.01)
         
-        # The state we are at is given by applying the first control input
-        x1,y1,theta1 = model(x1,y1,theta1,u1[:self.nu],self.ts)
-        x2,y2,theta2 = model(x2,y2,theta2,u2[:self.nu],self.ts)
-
-        traj1[:3] = [x1,y1,theta1]
-        traj2[:3] = [x2,y2,theta2]
-
-        return traj1, traj2
-
-    def run(self, traj1, traj2): 
-        # Make sure that the plots are non-blocking
+        for robot_id in robots: 
+            self.update_state(robots[robot_id])
+            self.update_ref(robots[robot_id])
+        
+        
+    def run(self, robots):
         plt.show(block=False)
-
-        rest1 = traj1[(self.N+1)*self.nx:]
-        rest2 = traj2[(self.N+1)*self.nx:]
-
-        traj1 = traj1[:(self.N+1)*self.nx]
-        traj2 = traj2[:(self.N+1)*self.nx]
-        
-        # Run from the next step
-        for j in range(0,40+1):    
-            # Run collision avoidance again
-            traj1, traj2 = self.run_one_iteration(traj1, traj2)
-            traj1, rest1= self.update_reference_trajectory(traj1, rest1)
-            traj2, rest2 = self.update_reference_trajectory(traj2, rest2)
-
+        for i in range(0,40+1): 
+            self.run_one_iteration(robots)
         plt.pause(2)
-        plt.close()
+
+        
 
 if __name__=="__main__": 
-    avoid = CollisionAvoidance()
 
+    """
     # Case 1 - Crossing
+    avoid = CollisionAvoidance(nr_of_robots=2)
     traj1 = generate_straight_trajectory(x=-2,y=0,theta=0,v=1,ts=0.1,N=40) # Trajectory from x=-1, y=0 driving straight to the right
     traj2 = generate_straight_trajectory(x=0,y=-2,theta=cs.pi/2,v=1,ts=0.1,N=40) # Trajectory from x=0,y=-1 driving straight up
-    avoid.run(traj1, traj2)
+    
+    robots = {}
+    robots[0] = {"State": traj1[:3], 'Ref': traj1[3:20*3+3], 'Remainder': traj1[20*3+3:], 'u': [], 'Past_x': [], 'Past_y': [], 'Color': 'r'}
+    robots[1] = {"State": traj2[:3], 'Ref': traj2[3:20*3+3], 'Remainder': traj2[20*3+3:], 'u': [], 'Past_x': [], 'Past_y': [], 'Color': 'b'}
+    
+    avoid.run(robots)
+    avoid.mng.kill()
 
     # Case 2 - Towards eachother
-    #traj1 = generate_straight_trajectory(x=-2,y=0,theta=0,v=1,ts=0.1,N=40) # Trajectory from x=-1, y=0 driving straight to the right
-    #traj2 = generate_straight_trajectory(x=2,y=0,theta=-cs.pi,v=1,ts=0.1,N=40) # Trajectory from x=0,y=-1 driving straight up
-    #avoid.run(traj1, traj2)
+    avoid = CollisionAvoidance(nr_of_robots=2)
+    traj1 = generate_straight_trajectory(x=-2,y=0,theta=0,v=1,ts=0.1,N=40) # Trajectory from x=-1, y=0 driving straight to the right
+    traj2 = generate_straight_trajectory(x=2,y=0,theta=-cs.pi,v=1,ts=0.1,N=40) # Trajectory from x=0,y=-1 driving straight up
+    robots = {}
+    robots[0] = {"State": traj1[:3], 'Ref': traj1[3:20*3+3], 'Remainder': traj1[20*3+3:], 'u': [], 'Past_x': [], 'Past_y': [], 'Color': 'r'}
+    robots[1] = {"State": traj2[:3], 'Ref': traj2[3:20*3+3], 'Remainder': traj2[20*3+3:], 'u': [], 'Past_x': [], 'Past_y': [], 'Color': 'b'}
+    avoid.run(robots)
+    avoid.mng.kill()
 
 
     # Case 3 - Behind eachother
-    #traj1 = generate_straight_trajectory(x=-1,y=0,theta=0,v=1,ts=0.1,N=40) # Trajectory from x=-1, y=0 driving straight to the right
-    #traj2 = generate_straight_trajectory(x=-2.1,y=0,theta=0,v=1.3,ts=0.1,N=40) # Trajectory from x=0,y=-1 driving straight up
-    #avoid.run(traj1, traj2)
-
+    avoid = CollisionAvoidance(nr_of_robots=2)
+    traj1 = generate_straight_trajectory(x=-1,y=0,theta=0,v=1,ts=0.1,N=40) # Trajectory from x=-1, y=0 driving straight to the right
+    traj2 = generate_straight_trajectory(x=-2.1,y=0,theta=0,v=1.3,ts=0.1,N=40) # Trajectory from x=0,y=-1 driving straight up
+    robots = {}
+    robots[0] = {"State": traj1[:3], 'Ref': traj1[3:20*3+3], 'Remainder': traj1[20*3+3:], 'u': [], 'Past_x': [], 'Past_y': [], 'Color': 'r'}
+    robots[1] = {"State": traj2[:3], 'Ref': traj2[3:20*3+3], 'Remainder': traj2[20*3+3:], 'u': [], 'Past_x': [], 'Past_y': [], 'Color': 'b'}
+    avoid.run(robots)
     avoid.mng.kill()
+    """
+
+    # Case 4 - 3 robots
+    avoid = CollisionAvoidance(nr_of_robots=3)
+    traj1 = generate_straight_trajectory(x=-3,y=0,theta=0,v=1,ts=0.1,N=60) # Trajectory from x=-1, y=0 driving straight to the right
+    traj2 = generate_straight_trajectory(x=3,y=0,theta=-cs.pi,v=1,ts=0.1,N=60) # Trajectory from x=0,y=-1 driving straight up
+    traj3 = generate_straight_trajectory(x=0,y=-2,theta=cs.pi/2,v=1,ts=0.1,N=60) # Trajectory from x=0,y=-1 driving straight up
+    
+    N = 20
+    robots = {}
+    robots[0] = {"State": traj1[:3], 'Ref': traj1[3:N*3+3], 'Remainder': traj1[N*3+3:], 'u': [], 'Past_x': [], 'Past_y': [], 'Color': 'r'}
+    robots[1] = {"State": traj2[:3], 'Ref': traj2[3:N*3+3], 'Remainder': traj2[N*3+3:], 'u': [], 'Past_x': [], 'Past_y': [], 'Color': 'b'}
+    robots[2] = {"State": traj3[:3], 'Ref': traj3[3:N*3+3], 'Remainder': traj3[N*3+3:], 'u': [], 'Past_x': [], 'Past_y': [], 'Color': 'g'}
+
+    avoid.run(robots)
+    avoid.mng.kill()
+
+    
