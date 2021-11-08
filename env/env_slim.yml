@@ -1,0 +1,16 @@
+name: fleet2
+channels:
+- defaults
+dependencies:
+- python=3.7
+- pip
+- numpy
+- scipy
+- matplotlib
+- pandas
+- pip:
+  - pillow
+  - opengen
+  - casadi
+
+
