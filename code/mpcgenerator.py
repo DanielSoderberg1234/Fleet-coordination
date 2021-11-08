@@ -3,6 +3,7 @@ import casadi.casadi as cs
 import matplotlib.pyplot as plt
 import numpy as np
 from function_lib import model
+from itertools import combinations
 
 """
     A file that generates the MPC formulation.
@@ -54,11 +55,14 @@ class MPCGenerator:
         # Cost for being closer than r to the other robot
         return qobs*cs.fmax(0.0, 1**2 - (x1-x2)**2 - (y1-y2)**2)
 
-    def cost_collision(self,robots, qobs): 
-       
-        x1,y1,theta1 = robots[0][0]
-        x2,y2,theta2 = robots[1][0]
-        cost = self.cost_robot2robot_dist(x1,y1,x2,y2,qobs)
+    def cost_collision(self,robots, qobs):
+        cost = 0 
+        # Iterate over all pairs of robots
+        for comb in combinations(range(0,self.nr_of_robots),2):
+            x1,y1,theta1 = robots[comb[0]][0]
+            x2,y2,theta2 = robots[comb[1]][0]
+            cost = +self.cost_robot2robot_dist(x1,y1,x2,y2,qobs)
+
         return cost
         
     def cost_control_action(self,u,r): 
@@ -93,10 +97,10 @@ class MPCGenerator:
         (nu, nx, N, ts) = (2, 3, 20, 0.1)
 
         # Input vector 2 trajectories, N long with nx states in each i=0,1,2,..,N-1 and the 6 last are the weights
-        p = cs.SX.sym('p',2*nx*(N+1)+6)
+        p = cs.SX.sym('p',self.nr_of_robots*nx*(N+1)+6)
 
         # Optimization variables 2 robots each with nu control inputs for N steps
-        u = cs.SX.sym('u',2*nu*N)
+        u = cs.SX.sym('u',self.nr_of_robots*nu*N)
 
         # Dictionary to hold all robot data
         robots = {}

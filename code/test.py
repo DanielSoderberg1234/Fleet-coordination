@@ -1,3 +1,4 @@
+import imp
 import matplotlib.pyplot as plt
 import warnings
 warnings.filterwarnings("ignore")
@@ -6,6 +7,7 @@ from scipy.spatial import ConvexHull
 import cdd
 from function_lib import compute_polytope_halfspaces
 import casadi.casadi as cs
+from itertools import combinations
 
 """
 vertices = np.array([[0, 0], [1, 0], [1, 1], [0, 1]])
@@ -26,14 +28,5 @@ print(outside_pol)
 a = [1,2,3,4,5]
 print(a[-3:])
 """
-u = cs.SX.sym('u',10)
-p = cs.SX.sym('p',10)
-
-states = [0,1,2]
-
-variables = {}
-variables[0] = [states,u[:5],p[:5]]
-variables[1] = [states,u[5:],p[5:]]
-
-for i in variables:
-    print(variables[i])
+for comb in combinations(range(0,2),2):
+    print(comb)
