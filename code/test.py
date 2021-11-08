@@ -26,23 +26,14 @@ print(outside_pol)
 a = [1,2,3,4,5]
 print(a[-3:])
 """
-ang = np.pi/4
+u = cs.SX.sym('u',10)
+p = cs.SX.sym('p',10)
 
-x = 1
-y = 1
-width = 0.5
-length = 0.7
+states = [0,1,2]
 
-corners = np.array([[length/2,width/2], 
-                    [length/2,-width/2],
-                    [-length/2,-width/2],
-                    [-length/2,width/2],
-                    [length/2,width/2]]).T
+variables = {}
+variables[0] = [states,u[:5],p[:5]]
+variables[1] = [states,u[5:],p[5:]]
 
-rot = np.array([[ np.cos(ang), -np.sin(ang)],[ np.sin(ang), np.cos(ang)]])
-
-rot_corners = rot@corners
-
-plt.plot(x+corners[0,:], y+corners[1,:])
-plt.plot(x+rot_corners[0,:], y+rot_corners[1,:])
-plt.show()
+for i in variables:
+    print(variables[i])

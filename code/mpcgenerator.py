@@ -10,18 +10,75 @@ from function_lib import model
 class MPCGenerator: 
     def __init__(self): 
         self.name = "Fleet-collison"
+        self.nr_of_robots = 2
 
     def cost_state_ref(self,x,y,theta,xref,yref,thetaref,q,qtheta): 
         # Cost for deviating from the current reference
         return q*( (xref-x)**2 + (yref-y)**2 ) + qtheta*(thetaref-theta)**2
 
+    def cost_deviation_ref(self,robots,i,j,q,qtheta):
+        nu = 2
+        nx = 3
+        cost = 0
+
+        # Loop over all robots 
+        for robot_id in robots: 
+            # Extract the content for each robot
+            x,y,theta = robots[robot_id][0]
+            u = robots[robot_id][1]
+            ref = robots[robot_id][2]
+
+            # Get the data for the current steps
+            refi = ref[i:i+nx]
+
+            # Get the references explicit
+            xref, yref, thetaref = refi[0], refi[1], refi[2]
+            cost += self.cost_state_ref(x,y,theta,xref,yref,thetaref,q,qtheta)
+        
+        return cost
+
+    def update_robot_states(self,robots,i,j,ts): 
+        nu = 2
+        nx = 3
+
+        for robot_id in robots: 
+            # Extract the content for each robot
+            x,y,theta = robots[robot_id][0]
+            u = robots[robot_id][1]
+            uj = u[j:j+nu]
+            x,y,theta = model(x,y,theta,uj,ts)
+            robots[robot_id][0] = [x,y,theta]
+
+
     def cost_robot2robot_dist(self,x1,y1,x2,y2,qobs): 
         # Cost for being closer than r to the other robot
         return qobs*cs.fmax(0.0, 1**2 - (x1-x2)**2 - (y1-y2)**2)
-    
+
+    def cost_collision(self,robots, qobs): 
+       
+        x1,y1,theta1 = robots[0][0]
+        x2,y2,theta2 = robots[1][0]
+        cost = self.cost_robot2robot_dist(x1,y1,x2,y2,qobs)
+        return cost
+        
     def cost_control_action(self,u,r): 
         # Cost for the control action
         return r*cs.dot(u, u)
+
+    def cost_all_control_action(self,robots,i,j,r): 
+        nu = 2
+        nx = 3
+        cost = 0
+
+        for robot_id in robots: 
+            # Extract the content for each robot
+            x,y,theta = robots[robot_id][0]
+            u = robots[robot_id][1]
+            uj = u[j:j+nu]
+            cost += self.cost_control_action(uj,r)
+        
+        return cost
+
 
     def bound_control_action(self, vmin,vmax,wmin,wmax,N): 
         # But hard constraints on the velocities of the robot
@@ -41,67 +98,36 @@ class MPCGenerator:
         # Optimization variables 2 robots each with nu control inputs for N steps
         u = cs.SX.sym('u',2*nu*N)
 
-        # First part of p is the trajectory reference for the first robot
-        ref1 = p[:(N+1)*nx]
+        # Dictionary to hold all robot data
+        robots = {}
 
-        # Second part of p is the trajectory reference for the second robot
-        ref2 = p[(N+1)*nx:2*(N+1)*nx]
+        # Fill the dictionary
+        for i in range(0,self.nr_of_robots): 
+            # Values to fill the dictionary
+            ref_r = p[(N+1)*nx*i:(N+1)*nx*(i+1)]
+            u_r = u[nu*N*i:nu*N*(i+1)]
+            x_r,y_r,theta_r = ref_r[0], ref_r[1], ref_r[2]
 
-        # Define the structure of the optimization variables
-        u1 = u[:nu*N]
-        u2 = u[nu*N:]
-
-        # Init states
-        x1,y1,theta1 = p[0],p[1],p[2]
-        x2,y2,theta2 = p[nx*(N+1)],p[nx*(N+1)+1],p[nx*(N+1)+2]
-
+            # All data for robot i, current state, control inputs for all states, reference for all states
+            robots[i] = [[x_r,y_r,theta_r], u_r, ref_r]
+        
         # Get weights from input vectir as the last elements
         q, qtheta, r, qN, qthetaN,qobs = p[-6],p[-5],p[-4],p[-3],p[-2],p[-1]
 
         # Define the cost
         cost = 0
-        
-        # Just dummy so that they are defined
-        xref1,yref1,thetaref1 = 0,0,0
-        xref2,yref2,thetaref2 = 0,0,0
-
+       
         for i,j in zip( range(0,nx*N,nx), range(0,nu*N,nu)): 
-            # Extract the reference for that state
-            ref1i = ref1[i:i+3]
-            xref1, yref1, thetaref1 = ref1i[0], ref1i[1], ref1i[2]
-
-            ref2i = ref2[i:i+3]
-            xref2, yref2, thetaref2 = ref2i[0], ref2i[1], ref2i[2]
-            
-            # Cost for deviating from reference
-            cost += self.cost_state_ref(x1,y1,theta1,xref1,yref1,thetaref1,q,qtheta)
-            cost += self.cost_state_ref(x2,y2,theta2,xref2,yref2,thetaref2,q,qtheta)
-
-            # Get current inputs
-            u1i = u1[j:j+nu]
-            u2i = u2[j:j+nu]
-
-            # Cost for control action
-            cost += self.cost_control_action(u1i,r)
-            cost += self.cost_control_action(u2i,r)
-
-            # Update states
-            x1,y1,theta1 = model(x1,y1,theta1,u1i,ts)
-            x2,y2,theta2 = model(x2,y2,theta2,u2i,ts)
-
-            # Cost for being closer that a given distance to another robot
-            cost += self.cost_robot2robot_dist(x1,y1,x2,y2,qobs)
-
-        # Extract the last reference for that state
-        ref1i = ref1[-3:]
-        xref1, yref1, thetaref1 = ref1i[0], ref1i[1], ref1i[2]
-
-        ref2i = ref2[-3:]
-        xref2, yref2, thetaref2 = ref2i[0], ref2i[1], ref2i[2]
-
-        # Final cost for deviating from state
-        cost += self.cost_state_ref(x1,y1,theta1,xref1,yref1,thetaref1,qN,qthetaN)
-        cost += self.cost_state_ref(x2,y2,theta2,xref2,yref2,thetaref2,qN,qthetaN)
+            # Calculate the cost of all robots deviating from their reference
+            cost += self.cost_deviation_ref(robots,i,j,q,qtheta)
+            # Calculate the cost on all control actions
+            cost += self.cost_all_control_action(robots,i,j,r)
+            # Update the states
+            self.update_robot_states(robots,i,j,ts)
+            # Calculate the cost of colliding
+            cost += self.cost_collision(robots, qobs)
+        # Cost for deviating from final reference points
+        cost += self.cost_deviation_ref(robots,nx*N,nu*N,qN,qthetaN)
 
         # Get the bounds for the control action
         bounds = self.bound_control_action(vmin=-1.5,vmax=1.5,wmin=-1,wmax=1,N=N)
@@ -110,6 +136,7 @@ class MPCGenerator:
 
     def build_mpc(self): 
         u,p,cost,bounds = self.generate_mpc_formulation()
+       
         problem = og.builder.Problem(u, p, cost)\
             .with_constraints(bounds) \
                   
@@ -130,7 +157,7 @@ class MPCGenerator:
                                                 build_config,
                                                 solver_config)
         builder.build()
-
+       
 
 if __name__=='__main__':
     mpc = MPCGenerator()

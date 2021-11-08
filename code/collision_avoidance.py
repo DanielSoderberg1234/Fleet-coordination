@@ -41,6 +41,8 @@ class CollisionAvoidance:
 
         self.past_traj2x = []
         self.past_traj2y = []
+
+        self.dist = []
         
 
     def get_input(self, traj1, traj2):
@@ -88,6 +90,17 @@ class CollisionAvoidance:
         # Plot the robot with center x,y
         plt.plot(x+rot_corners[0,:], y+rot_corners[1,:],color='k')
 
+    def plot_dist(self,x1,y1,x2,y2): 
+        dist = np.sqrt( (x2-x1)**2 + (y2-y1)**2 )
+        self.dist.append(dist)
+        lim_dist = 1
+        plt.subplot(1,2,2)
+        plt.cla()
+        plt.plot(self.dist, label="R1 to R2 ")
+        plt.plot(range(0,len(self.dist)), [lim_dist]*len(self.dist), label="Limit")
+        plt.legend()
+        plt.title("Distance")
+
 
     def plot_again(self,x1,y1,theta1,x2,y2,theta2): 
         # Append to the actual path taken
@@ -102,19 +115,24 @@ class CollisionAvoidance:
         ang = np.linspace(0,2*np.pi,100)
         r=1.0
 
+        plt.subplot(1,2,1)
+        plt.cla()
         plt.plot(self.past_traj1x,self.past_traj1y,'-o',color='r',label="Actual1")
         plt.plot(x1[1:],y1[1:],'-o',color='r',alpha=0.2, label="Predicted1")
-        plt.plot(x1[0]+r*np.cos(ang), y1[0]+r*np.sin(ang),'-',color='k')
+        #plt.plot(x1[0]+r*np.cos(ang), y1[0]+r*np.sin(ang),'-',color='k')
         self.plot_robot(x1[0],y1[0],theta1)
 
         plt.plot(self.past_traj2x,self.past_traj2y,'-o',color='b',label="Actual2")
         plt.plot(x2[1:],y2[1:],'-o',color='b',alpha=0.2, label="Predicted2")
-        plt.plot(x2[0]+r*np.cos(ang), y2[0]+r*np.sin(ang),'-',color='k')
+        #plt.plot(x2[0]+r*np.cos(ang), y2[0]+r*np.sin(ang),'-',color='k')
         self.plot_robot(x2[0],y2[0],theta2)
 
         plt.xlim(-3,3)
         plt.ylim(-3,3)
         plt.legend()
+        plt.title("Map")
+
+        self.plot_dist(x1[0],y1[0],x2[0],y2[0])
         plt.pause(0.1)
 
     def update_reference_trajectory(self,traj,rest):
@@ -190,18 +208,19 @@ if __name__=="__main__":
     avoid = CollisionAvoidance()
 
     # Case 1 - Crossing
-    #traj1 = generate_straight_trajectory(x=-2,y=0,theta=0,v=1,ts=0.1,N=40) # Trajectory from x=-1, y=0 driving straight to the right
-    #traj2 = generate_straight_trajectory(x=0,y=-2,theta=cs.pi/2,v=1,ts=0.1,N=40) # Trajectory from x=0,y=-1 driving straight up
-    #avoid.run(traj1, traj2)
+    traj1 = generate_straight_trajectory(x=-2,y=0,theta=0,v=1,ts=0.1,N=40) # Trajectory from x=-1, y=0 driving straight to the right
+    traj2 = generate_straight_trajectory(x=0,y=-2,theta=cs.pi/2,v=1,ts=0.1,N=40) # Trajectory from x=0,y=-1 driving straight up
+    avoid.run(traj1, traj2)
 
     # Case 2 - Towards eachother
     #traj1 = generate_straight_trajectory(x=-2,y=0,theta=0,v=1,ts=0.1,N=40) # Trajectory from x=-1, y=0 driving straight to the right
     #traj2 = generate_straight_trajectory(x=2,y=0,theta=-cs.pi,v=1,ts=0.1,N=40) # Trajectory from x=0,y=-1 driving straight up
     #avoid.run(traj1, traj2)
 
+
     # Case 3 - Behind eachother
-    traj1 = generate_straight_trajectory(x=-1,y=0,theta=0,v=1,ts=0.1,N=40) # Trajectory from x=-1, y=0 driving straight to the right
-    traj2 = generate_straight_trajectory(x=-2.1,y=0,theta=0,v=1.3,ts=0.1,N=40) # Trajectory from x=0,y=-1 driving straight up
-    avoid.run(traj1, traj2)
+    #traj1 = generate_straight_trajectory(x=-1,y=0,theta=0,v=1,ts=0.1,N=40) # Trajectory from x=-1, y=0 driving straight to the right
+    #traj2 = generate_straight_trajectory(x=-2.1,y=0,theta=0,v=1.3,ts=0.1,N=40) # Trajectory from x=0,y=-1 driving straight up
+    #avoid.run(traj1, traj2)
 
     avoid.mng.kill()
