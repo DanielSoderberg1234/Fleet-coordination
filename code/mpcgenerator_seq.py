@@ -12,10 +12,13 @@ from itertools import combinations
     gången som ska planeras och returnera trajectoria/controlsignaler
     för endast den roboten. 
 """
+# TODO: pos_list som input.
+# TODO: nr_of_robots kan tas bort?  
+
 class MPCGeneratorSequential: 
     def __init__(self, nr_of_robots): 
         self.name = "Fleet-collison-sequental"
-        self.nr_of_robots = nr_of_robots
+        self.nr_of_robots = 1
 
     def cost_state_ref(self,x,y,theta,xref,yref,thetaref,q,qtheta):
         # Cost for deviating from the current reference
@@ -56,7 +59,8 @@ class MPCGeneratorSequential:
 
     def cost_collision(self,robots, qobs):
         cost = 0 
-        # Look at cost of distanse to all robots from the last one in robots
+        # Look at cost of distance to all robots from the last one in robots
+        # TODO: Byt ut robots så att distansen mäts mellan robot och positionerna i pos_list
         for i in range(len(robots)-1):
             x1,y1,theta1 = robots[i]['State']
             x2,y2,theta2 = robots[-1]['State'] # The robot that is being optimized for
@@ -153,7 +157,7 @@ class MPCGeneratorSequential:
             .with_tcp_interface_config()
 
         meta = og.config.OptimizerMeta()\
-            .with_optimizer_name("robot_{}_solver".format(self.nr_of_robots))
+            .with_optimizer_name("robot_seq_solver")
 
         solver_config = og.config.SolverConfiguration()\
             .with_tolerance(1e-5)\
