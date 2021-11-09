@@ -1,8 +1,27 @@
 import matplotlib.pyplot as plt 
 import numpy as np 
 import casadi.casadi as cs
-from function_lib import model, generate_straight_trajectory
+from function_lib import model, generate_straight_trajectory, compute_polytope_halfspaces
 import opengen as og
+from scipy.spatial import Delaunay
+
+
+
+def boundary_to_constraint(vertices): 
+    # Triangulate the vertices, returns the index of corners for that triangle
+    tr = Delaunay(vertices)
+    # Get the traingles defined by the vertices
+    tri = vertices[tr.simplices]
+    # Array of the equation
+    eqs = []
+    for t in tri: 
+        # Compute the halfspaces
+        A, b = compute_polytope_halfspaces(t)
+        # Put the values into the desired format
+        eqs.extend([A[0,0],A[0,1],b[0],A[1,0],A[1,1],b[1],A[2,0],A[2,1],b[2]])
+    
+    return eqs
+
 
 """
  A file for testing the MPC. 
@@ -33,22 +52,24 @@ N = 20
 
 # Define weights and and get the reference trajectories
 weights = [10,1,0.01,100,10,200]
-states1 = generate_straight_trajectory(-1,0,0,1,0.1,20) # Trajectory from x=-1, y=0 driving straight to the right
-states2 = generate_straight_trajectory(1,0,-cs.pi,1,0.1,20) # Trajectory from x=0,y=-1 driving straight up
-states3 = generate_straight_trajectory(0,-1,cs.pi/2,1,0.1,20) # Trajectory from x=0,y=-1 driving straight up
+states1 = generate_straight_trajectory(-.5,0,0,1,0.1,20) # Trajectory from x=-1, y=0 driving straight to the right
+states2 = generate_straight_trajectory(0,-.5,cs.pi/2,1,0.1,20) # Trajectory from x=0,y=-1 driving straight up
+
+vertices = np.array([[-.2, -.2], [.2, -.2], [.2, .2], [-.2, .2]])
+eqs = boundary_to_constraint(vertices)
 
 # Create the input vector
 p = []
 p.extend(states1)
 p.extend(states2)
-p.extend(states3)
 p.extend(weights)
+p.extend(eqs)
 
 # Call the solver
-mng = og.tcp.OptimizerTcpManager('reffollow/version2')
+mng = og.tcp.OptimizerTcpManager('collision_avoidance/robot_2_solver')
 mng.start()
 mng.ping()
-solution = mng.call(p, initial_guess=[1.0] * (3*nu*N))
+solution = mng.call(p, initial_guess=[1.0] * (2*nu*N))
 mng.kill()
 
 # Extract the sultion 
@@ -57,21 +78,20 @@ u_star = solution['solution']
 
 # Get the generated trajectory for the first robot
 u1 = u_star[:nu*N]
-x1,y1,theta1 = -1,0,0
+x1,y1,theta1 = -.5,0,0
 ts = 0.1
 u2 = u_star[nu*N:2*nu*N]
-x2,y2,theta2 = 1,0,-cs.pi
-u3 = u_star[2*nu*N:]
-x3,y3,theta3 = 0,-1,cs.pi/2
+x2,y2,theta2 = 0,-.5,cs.pi/2
+
 
 x1, y1 = control_action_to_trajectory(x1,y1,theta1,u1,ts)
 x2, y2 = control_action_to_trajectory(x2,y2,theta2,u2,ts)
-x3, y3 = control_action_to_trajectory(x3,y3,theta3,u3,ts)
+
 
 
 past_traj1x, past_traj1y = [],[]
 past_traj2x, past_traj2y = [],[]
-past_traj3x, past_traj3y = [],[]
+
 
 plt.show(block=False)
 for i in range(0,21): 
@@ -79,8 +99,7 @@ for i in range(0,21):
     past_traj1y.append(y1[0])
     past_traj2x.append(x2[0])
     past_traj2y.append(y2[0])
-    past_traj3x.append(x3[0])
-    past_traj3y.append(y3[0])
+    
 
 
     plt.cla()
@@ -94,9 +113,7 @@ for i in range(0,21):
     plt.plot(x2[1:],y2[1:],'-o',color='b',alpha=0.2, label="Predicted2")
     plt.plot(x2[0]+r*np.cos(ang), y2[0]+r*np.sin(ang),color='k')
 
-    plt.plot(past_traj3x,past_traj3y,'-o',color='g',label="Actual3")
-    plt.plot(x3[1:],y3[1:],'-o',color='g',alpha=0.2, label="Predicted3")
-    plt.plot(x3[0]+r*np.cos(ang), y3[0]+r*np.sin(ang),color='k')
+    plt.plot([-.2,.2,.2,-.2,-.2], [-.2,-.2,.2,.2,-.2], color='g')
 
     plt.xlim(-1.5,1.5)
     plt.ylim(-1.5,1.5)
@@ -107,8 +124,7 @@ for i in range(0,21):
     y1 = y1[1:]
     x2 = x2[1:]
     y2 = y2[1:]
-    x3 = x3[1:]
-    y3 = y3[1:]
+
 
 
 
