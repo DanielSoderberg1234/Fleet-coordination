@@ -6,6 +6,7 @@ import opengen as og
 import warnings
 warnings.filterwarnings("ignore")
 from itertools import combinations
+from RobotModelData import RobotModelData
 
 """
  A file for testing the MPC. 
@@ -17,22 +18,15 @@ from itertools import combinations
 
 
 class CollisionAvoidance: 
-    def __init__(self, nr_of_robots):
-        # Some parameters 
-        self.nx = 3 # Number of states for each robot
-        self.nu = 2 # Nr of control inputs
-        self.N = 20 # Length of horizon 
-        self.ts = 0.1 # Sampling time
-        q = 10 # Cost of deviating from x and y reference
-        qtheta = 1 # Cost of deviating from angle reference
-        r = 0.01 # Cost for control action
-        qN = 100 # Final cost of deviating from x and y reference
-        qthetaN = 10 # Final cost of deviating from angle reference
-        qobs = 200 # Cost for being closer than r to the other robot
-        self.weights = [q,qtheta,r,qN,qthetaN,qobs]
+    def __init__(self, r_model: RobotModelData):
+        # Load parameters 
+        self.nr_of_robots = r_model.nr_of_robots
+        self.nx = r_model.nx
+        self.nu = r_model.nu 
+        self.N = r_model.N 
+        self.ts = r_model.ts 
+        self.weights = r_model.get_weights()
 
-        # Number of robots 
-        self.nr_of_robots = nr_of_robots
 
         # Create the solver and open a tcp port to it 
         self.mng = og.tcp.OptimizerTcpManager('collision_avoidance/robot_{}_solver'.format(self.nr_of_robots))
@@ -180,7 +174,8 @@ class CollisionAvoidance:
 if __name__=="__main__": 
 
     # Case 1 - Crossing
-    avoid = CollisionAvoidance(nr_of_robots=2)
+    r_model = RobotModelData(nr_of_robots=2)
+    avoid = CollisionAvoidance(r_model)
     traj1 = generate_straight_trajectory(x=-2,y=0,theta=0,v=1,ts=0.1,N=40) # Trajectory from x=-1, y=0 driving straight to the right
     traj2 = generate_straight_trajectory(x=0,y=-2,theta=cs.pi/2,v=1,ts=0.1,N=40) # Trajectory from x=0,y=-1 driving straight up
     
@@ -192,7 +187,8 @@ if __name__=="__main__":
     avoid.mng.kill()
 
     # Case 2 - Towards eachother
-    avoid = CollisionAvoidance(nr_of_robots=2)
+    r_model = RobotModelData(nr_of_robots=2)
+    avoid = CollisionAvoidance(r_model)
     traj1 = generate_straight_trajectory(x=-2,y=0,theta=0,v=1,ts=0.1,N=40) # Trajectory from x=-1, y=0 driving straight to the right
     traj2 = generate_straight_trajectory(x=2,y=0,theta=-cs.pi,v=1,ts=0.1,N=40) # Trajectory from x=0,y=-1 driving straight up
     robots = {}
@@ -203,7 +199,8 @@ if __name__=="__main__":
 
 
     # Case 3 - Behind eachother
-    avoid = CollisionAvoidance(nr_of_robots=2)
+    r_model = RobotModelData(nr_of_robots=2)
+    avoid = CollisionAvoidance(r_model)
     traj1 = generate_straight_trajectory(x=-1,y=0,theta=0,v=1,ts=0.1,N=40) # Trajectory from x=-1, y=0 driving straight to the right
     traj2 = generate_straight_trajectory(x=-2.1,y=0,theta=0,v=1.3,ts=0.1,N=40) # Trajectory from x=0,y=-1 driving straight up
     robots = {}
@@ -229,6 +226,22 @@ if __name__=="__main__":
 
     avoid.run(robots)
     avoid.mng.kill()
+    """
+
+    """
+    # How to change all parameters in r_model
+    r_model = RobotModelData(nr_of_robots = 2,
+                        nx = 3, 
+                        nu = 2, 
+                        N = 20, 
+                        ts = 0.1, 
+                        q = 10, 
+                        qtheta = 1,
+                        r = 0.01, 
+                        qN = 100, 
+                        qthetaN = 10, 
+                        qobs = 200, 
+                        )
     """
 
     
