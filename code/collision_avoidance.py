@@ -6,6 +6,7 @@ import opengen as og
 import warnings
 warnings.filterwarnings("ignore")
 from itertools import combinations
+from time import perf_counter_ns
 from RobotModelData import RobotModelData
 
 """
@@ -36,6 +37,9 @@ class CollisionAvoidance:
         self.dist = {}
         for comb in combinations(range(0,self.nr_of_robots),2): 
             self.dist[comb] = []
+
+        # Time 
+        self.time = 0
 
 
     def control_action_to_trajectory(self,x,y,theta,u): 
@@ -141,7 +145,10 @@ class CollisionAvoidance:
         mpc_input = self.get_input(robots)
 
         # Call the solver
+        t1 = perf_counter_ns()
         solution = self.mng.call(p=mpc_input, initial_guess=[1.0] * (self.nr_of_robots*self.nu*self.N))
+        t2 = perf_counter_ns()
+        self.time += (t2-t1)/10**6 
 
         # Get the solver output 
         u_star = solution['solution']
@@ -165,14 +172,15 @@ class CollisionAvoidance:
         
     def run(self, robots):
         plt.show(block=False)
-        for i in range(0,40+1): 
+        for i in range(0,60+1): 
             self.run_one_iteration(robots)
         plt.pause(2)
-
+        print("Avg solvtime: ", self.time/61," ms")
         
 
 if __name__=="__main__": 
 
+    
     # Case 1 - Crossing
     r_model = RobotModelData(nr_of_robots=2)
     avoid = CollisionAvoidance(r_model)
@@ -186,6 +194,7 @@ if __name__=="__main__":
     avoid.run(robots)
     avoid.mng.kill()
 
+    """
     # Case 2 - Towards eachother
     r_model = RobotModelData(nr_of_robots=2)
     avoid = CollisionAvoidance(r_model)
@@ -208,14 +217,15 @@ if __name__=="__main__":
     robots[1] = {"State": traj2[:3], 'Ref': traj2[3:20*3+3], 'Remainder': traj2[20*3+3:], 'u': [], 'Past_x': [], 'Past_y': [], 'Color': 'b'}
     avoid.run(robots)
     avoid.mng.kill()
-    """
+    
 
     # Case 4 - 4 robots
-    avoid = CollisionAvoidance(nr_of_robots=4)
+    avoid = CollisionAvoidance(nr_of_robots=5)
     traj1 = generate_straight_trajectory(x=-3,y=0,theta=0,v=1,ts=0.1,N=60) # Trajectory from x=-1, y=0 driving straight to the right
     traj2 = generate_straight_trajectory(x=3,y=0,theta=-cs.pi,v=1,ts=0.1,N=60) # Trajectory from x=0,y=-1 driving straight up
     traj3 = generate_straight_trajectory(x=1,y=-2,theta=cs.pi/2,v=1,ts=0.1,N=60) # Trajectory from x=0,y=-1 driving straight up
     traj4 = generate_straight_trajectory(x=-1,y=-2,theta=cs.pi/2,v=1,ts=0.1,N=60) # Trajectory from x=0,y=-1 driving straight up
+    traj5 = generate_straight_trajectory(x=-3,y=2,theta=0,v=1,ts=0.1,N=60) # Trajectory from x=-1, y=0 driving straight to the right
     
     N = 20
     robots = {}
@@ -223,6 +233,7 @@ if __name__=="__main__":
     robots[1] = {"State": traj2[:3], 'Ref': traj2[3:N*3+3], 'Remainder': traj2[N*3+3:], 'u': [], 'Past_x': [], 'Past_y': [], 'Color': 'b'}
     robots[2] = {"State": traj3[:3], 'Ref': traj3[3:N*3+3], 'Remainder': traj3[N*3+3:], 'u': [], 'Past_x': [], 'Past_y': [], 'Color': 'g'}
     robots[3] = {"State": traj4[:3], 'Ref': traj4[3:N*3+3], 'Remainder': traj4[N*3+3:], 'u': [], 'Past_x': [], 'Past_y': [], 'Color': 'm'}
+    robots[4] = {"State": traj5[:3], 'Ref': traj5[3:N*3+3], 'Remainder': traj5[N*3+3:], 'u': [], 'Past_x': [], 'Past_y': [], 'Color': 'y'}
 
     avoid.run(robots)
     avoid.mng.kill()
