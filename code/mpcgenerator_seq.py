@@ -7,6 +7,10 @@ from itertools import combinations
 
 """
     A file that generates the MPC formulation.
+    --------------------------------------------------------------------------
+    Skicka in en robot (tillsammans med tidigare robotars trajectoria) åt 
+    gången som ska planeras och returnera trajectoria/controlsignaler
+    för endast den roboten. 
 """
 class MPCGeneratorSequential: 
     def __init__(self, nr_of_robots): 
@@ -17,38 +21,33 @@ class MPCGeneratorSequential:
         # Cost for deviating from the current reference
         return q*( (xref-x)**2 + (yref-y)**2 ) + qtheta*(thetaref-theta)**2
 
-    def cost_deviation_ref(self,robots,i,j,q,qtheta):
+    def cost_deviation_ref(self,robot,i,j,q,qtheta):
         nu = 2
         nx = 3
         cost = 0
 
-        # Loop over all robots 
-        for robot_id in robots: 
-            # Extract the content for each robot
-            x,y,theta = robots[robot_id]['State']
-            u = robots[robot_id]['u']
-            ref = robots[robot_id]['Ref']
+        # Extract the content for the robot
+        x,y,theta = robot['State']
+        u = robot['u']
+        ref = robot['Ref']
 
-            # Get the data for the current steps
-            refi = ref[i:i+nx]
+        # Get the data for the current steps
+        refi = ref[i:i+nx]
 
-            # Get the references explicit
-            xref, yref, thetaref = refi[0], refi[1], refi[2]
-            cost += self.cost_state_ref(x,y,theta,xref,yref,thetaref,q,qtheta)
-        
+        # Get the references explicit
+        xref, yref, thetaref = refi[0], refi[1], refi[2]
+        cost += self.cost_state_ref(x,y,theta,xref,yref,thetaref,q,qtheta)       
         return cost
 
-    def update_robot_states(self,robots,i,j,ts): 
+    def update_robot_states(self,robot,i,j,ts): 
         nu = 2
         nx = 3
-
-        for robot_id in robots: 
-            # Extract the content for each robot
-            x,y,theta = robots[robot_id]['State']
-            u = robots[robot_id]['u']
-            uj = u[j:j+nu]
-            x,y,theta = model(x,y,theta,uj,ts)
-            robots[robot_id]['State'] = [x,y,theta]
+        # Extract the content for each robot
+        x,y,theta = robot['State']
+        u = robot['u']
+        uj = u[j:j+nu]
+        x,y,theta = model(x,y,theta,uj,ts)
+        robot['State'] = [x,y,theta]
 
 
     def cost_robot2robot_dist(self,x1,y1,x2,y2,qobs): 
@@ -57,12 +56,11 @@ class MPCGeneratorSequential:
 
     def cost_collision(self,robots, qobs):
         cost = 0 
-        # Iterate over all pairs of robots
-        for comb in combinations(range(0,self.nr_of_robots),2):
-            x1,y1,theta1 = robots[comb[0]]['State']
-            x2,y2,theta2 = robots[comb[1]]['State']
+        # Look at cost of distanse to all robots from the last one in robots
+        for i in range(len(robots)-1):
+            x1,y1,theta1 = robots[i]['State']
+            x2,y2,theta2 = robots[-1]['State'] # The robot that is being optimized for
             cost += self.cost_robot2robot_dist(x1,y1,x2,y2,qobs)
-
         return cost
         
     def cost_control_action(self,u,r):
@@ -96,11 +94,12 @@ class MPCGeneratorSequential:
         # Some predefined values, should maybe be read from a config file?
         (nu, nx, N, ts) = (2, 3, 20, 0.1)
 
-        # Input vector 2 trajectories, N long with nx states in each i=0,1,2,..,N-1 and the 6 last are the weights
+        #TODO: Ska bara vara en trajektoria, den för roboten vi ska planera för. Resten av referenstrajektorierna struntar vi i. 
+        # Input trajectories, N long with nx states in each i=0,1,2,..,N-1 and the 6 last are the weights
         p = cs.SX.sym('p',self.nr_of_robots*nx*(N+1)+6)
 
-        # Optimization variables 2 robots each with nu control inputs for N steps
-        u = cs.SX.sym('u',self.nr_of_robots*nu*N)
+        # Optimization variables for one robot with number oif control inputs, nu, for N steps
+        u = cs.SX.sym('u',nu*N)
 
         # Dictionary to hold all robot data
         robots = {}
@@ -121,7 +120,7 @@ class MPCGeneratorSequential:
 
         # Define the cost
         cost = 0
-       
+
         for i,j in zip( range(0,nx*N,nx), range(0,nu*N,nu)): 
             # Calculate the cost of all robots deviating from their reference
             cost += self.cost_deviation_ref(robots,i,j,q,qtheta)
