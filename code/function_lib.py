@@ -1,7 +1,7 @@
 import casadi.casadi as cs
 import numpy as np
 from scipy.spatial import ConvexHull
-import cdd
+#import cdd
 
 def model(x,y,theta,u,ts):
     # Get the velocities for readability 
@@ -23,7 +23,7 @@ def generate_straight_trajectory(x,y,theta,v,ts,N):
 
     return states
 
-def compute_polytope_halfspaces(vertices):
+#def compute_polytope_halfspaces(vertices):
     """
 
     Implementation from: https://github.com/stephane-caron/pypoman
@@ -45,7 +45,7 @@ def compute_polytope_halfspaces(vertices):
     b : array, shape=(m,)
         Vector of halfspace representation.
     """
-
+"""
     V = np.vstack(vertices)
     t = np.ones((V.shape[0], 1))  # first column is 1 for vertices
     tV = np.hstack([t, V])
@@ -57,4 +57,4 @@ def compute_polytope_halfspaces(vertices):
         return bA
     # the polyhedron is given by b + A x >= 0 where bA = [b|A]
     b, A = np.array(bA[:, 0]), -np.array(bA[:, 1:])
-    return (A, b)
+    return (A, b)"""

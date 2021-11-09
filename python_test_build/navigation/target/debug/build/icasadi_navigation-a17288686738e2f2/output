@@ -1,0 +1,113 @@
+TARGET = Some("x86_64-pc-windows-msvc")
+OPT_LEVEL = Some("0")
+HOST = Some("x86_64-pc-windows-msvc")
+CC_x86_64-pc-windows-msvc = None
+CC_x86_64_pc_windows_msvc = None
+HOST_CC = None
+CC = None
+CFLAGS_x86_64-pc-windows-msvc = None
+CFLAGS_x86_64_pc_windows_msvc = None
+HOST_CFLAGS = None
+CFLAGS = None
+CRATE_CC_NO_DEFAULTS = None
+CARGO_CFG_TARGET_FEATURE = Some("fxsr,sse,sse2")
+DEBUG = Some("true")
+CC_x86_64-pc-windows-msvc = None
+CC_x86_64_pc_windows_msvc = None
+HOST_CC = None
+CC = None
+CFLAGS_x86_64-pc-windows-msvc = None
+CFLAGS_x86_64_pc_windows_msvc = None
+HOST_CFLAGS = None
+CFLAGS = None
+CRATE_CC_NO_DEFAULTS = None
+CARGO_CFG_TARGET_FEATURE = Some("fxsr,sse,sse2")
+CC_x86_64-pc-windows-msvc = None
+CC_x86_64_pc_windows_msvc = None
+HOST_CC = None
+CC = None
+CFLAGS_x86_64-pc-windows-msvc = None
+CFLAGS_x86_64_pc_windows_msvc = None
+HOST_CFLAGS = None
+CFLAGS = None
+CRATE_CC_NO_DEFAULTS = None
+CARGO_CFG_TARGET_FEATURE = Some("fxsr,sse,sse2")
+CC_x86_64-pc-windows-msvc = None
+CC_x86_64_pc_windows_msvc = None
+HOST_CC = None
+CC = None
+CFLAGS_x86_64-pc-windows-msvc = None
+CFLAGS_x86_64_pc_windows_msvc = None
+HOST_CFLAGS = None
+CFLAGS = None
+CRATE_CC_NO_DEFAULTS = None
+CARGO_CFG_TARGET_FEATURE = Some("fxsr,sse,sse2")
+CC_x86_64-pc-windows-msvc = None
+CC_x86_64_pc_windows_msvc = None
+HOST_CC = None
+CC = None
+CFLAGS_x86_64-pc-windows-msvc = None
+CFLAGS_x86_64_pc_windows_msvc = None
+HOST_CFLAGS = None
+CFLAGS = None
+CRATE_CC_NO_DEFAULTS = None
+CARGO_CFG_TARGET_FEATURE = Some("fxsr,sse,sse2")
+running: "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\cl.exe" "-nologo" "-MD" "-Z7" "-Brepro" "-I" "src" "-W4" "-Wall" "-FoC:\\Users\\johan\\Documents\\GitHub\\Fleet-coordination\\python_test_build\\navigation\\target\\debug\\build\\icasadi_navigation-a17288686738e2f2\\out\\extern/auto_casadi_cost.o" "-c" "extern/auto_casadi_cost.c"
+auto_casadi_cost.c
+extern/auto_casadi_cost.c(54): warning C4668: '__STDC_VERSION__' is not defined as a preprocessor macro, replacing with '0' for '#if/#elif'
+extern/auto_casadi_cost.c(67): warning C4100: 'mem': unreferenced formal parameter
+extern/auto_casadi_cost.c(67): warning C4100: 'w': unreferenced formal parameter
+extern/auto_casadi_cost.c(67): warning C4100: 'iw': unreferenced formal parameter
+extern/auto_casadi_cost.c(1264): warning C4100: 'mem': unreferenced formal parameter
+extern/auto_casadi_cost.c(1268): warning C4100: 'mem': unreferenced formal parameter
+extern/auto_casadi_cost.c(1275): warning C4100: 'mem': unreferenced formal parameter
+extern/auto_casadi_cost.c(1291): warning C4065: switch statement contains 'default' but no 'case' labels
+exit code: 0
+running: "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\cl.exe" "-nologo" "-MD" "-Z7" "-Brepro" "-I" "src" "-W4" "-Wall" "-FoC:\\Users\\johan\\Documents\\GitHub\\Fleet-coordination\\python_test_build\\navigation\\target\\debug\\build\\icasadi_navigation-a17288686738e2f2\\out\\extern/auto_casadi_grad.o" "-c" "extern/auto_casadi_grad.c"
+auto_casadi_grad.c
+extern/auto_casadi_grad.c(55): warning C4100: 'mem': unreferenced formal parameter
+extern/auto_casadi_grad.c(55): warning C4100: 'w': unreferenced formal parameter
+extern/auto_casadi_grad.c(55): warning C4100: 'iw': unreferenced formal parameter
+extern/auto_casadi_grad.c(2010): warning C4100: 'mem': unreferenced formal parameter
+extern/auto_casadi_grad.c(2014): warning C4100: 'mem': unreferenced formal parameter
+extern/auto_casadi_grad.c(2021): warning C4100: 'mem': unreferenced formal parameter
+extern/auto_casadi_grad.c(2037): warning C4065: switch statement contains 'default' but no 'case' labels
+exit code: 0
+running: "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\cl.exe" "-nologo" "-MD" "-Z7" "-Brepro" "-I" "src" "-W4" "-Wall" "-FoC:\\Users\\johan\\Documents\\GitHub\\Fleet-coordination\\python_test_build\\navigation\\target\\debug\\build\\icasadi_navigation-a17288686738e2f2\\out\\extern/auto_casadi_mapping_f2.o" "-c" "extern/auto_casadi_mapping_f2.c"
+auto_casadi_mapping_f2.c
+extern/auto_casadi_mapping_f2.c(52): warning C4100: 'mem': unreferenced formal parameter
+extern/auto_casadi_mapping_f2.c(52): warning C4100: 'w': unreferenced formal parameter
+extern/auto_casadi_mapping_f2.c(52): warning C4100: 'iw': unreferenced formal parameter
+extern/auto_casadi_mapping_f2.c(52): warning C4100: 'arg': unreferenced formal parameter
+extern/auto_casadi_mapping_f2.c(67): warning C4100: 'mem': unreferenced formal parameter
+extern/auto_casadi_mapping_f2.c(71): warning C4100: 'mem': unreferenced formal parameter
+extern/auto_casadi_mapping_f2.c(78): warning C4100: 'mem': unreferenced formal parameter
+extern/auto_casadi_mapping_f2.c(94): warning C4065: switch statement contains 'default' but no 'case' labels
+exit code: 0
+running: "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\cl.exe" "-nologo" "-MD" "-Z7" "-Brepro" "-I" "src" "-W4" "-Wall" "-FoC:\\Users\\johan\\Documents\\GitHub\\Fleet-coordination\\python_test_build\\navigation\\target\\debug\\build\\icasadi_navigation-a17288686738e2f2\\out\\extern/auto_casadi_mapping_f1.o" "-c" "extern/auto_casadi_mapping_f1.c"
+auto_casadi_mapping_f1.c
+extern/auto_casadi_mapping_f1.c(52): warning C4100: 'mem': unreferenced formal parameter
+extern/auto_casadi_mapping_f1.c(52): warning C4100: 'w': unreferenced formal parameter
+extern/auto_casadi_mapping_f1.c(52): warning C4100: 'iw': unreferenced formal parameter
+extern/auto_casadi_mapping_f1.c(52): warning C4100: 'arg': unreferenced formal parameter
+extern/auto_casadi_mapping_f1.c(67): warning C4100: 'mem': unreferenced formal parameter
+extern/auto_casadi_mapping_f1.c(71): warning C4100: 'mem': unreferenced formal parameter
+extern/auto_casadi_mapping_f1.c(78): warning C4100: 'mem': unreferenced formal parameter
+extern/auto_casadi_mapping_f1.c(94): warning C4065: switch statement contains 'default' but no 'case' labels
+exit code: 0
+running: "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\cl.exe" "-nologo" "-MD" "-Z7" "-Brepro" "-I" "src" "-W4" "-Wall" "-FoC:\\Users\\johan\\Documents\\GitHub\\Fleet-coordination\\python_test_build\\navigation\\target\\debug\\build\\icasadi_navigation-a17288686738e2f2\\out\\extern/interface.o" "-c" "extern/interface.c"
+interface.c
+exit code: 0
+AR_x86_64-pc-windows-msvc = None
+AR_x86_64_pc_windows_msvc = None
+HOST_AR = None
+AR = None
+running: "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Tools\\MSVC\\14.29.30133\\bin\\HostX64\\x64\\lib.exe" "-out:C:\\Users\\johan\\Documents\\GitHub\\Fleet-coordination\\python_test_build\\navigation\\target\\debug\\build\\icasadi_navigation-a17288686738e2f2\\out\\libicasadi.a" "-nologo" "C:\\Users\\johan\\Documents\\GitHub\\Fleet-coordination\\python_test_build\\navigation\\target\\debug\\build\\icasadi_navigation-a17288686738e2f2\\out\\extern/auto_casadi_cost.o" "C:\\Users\\johan\\Documents\\GitHub\\Fleet-coordination\\python_test_build\\navigation\\target\\debug\\build\\icasadi_navigation-a17288686738e2f2\\out\\extern/auto_casadi_grad.o" "C:\\Users\\johan\\Documents\\GitHub\\Fleet-coordination\\python_test_build\\navigation\\target\\debug\\build\\icasadi_navigation-a17288686738e2f2\\out\\extern/auto_casadi_mapping_f2.o" "C:\\Users\\johan\\Documents\\GitHub\\Fleet-coordination\\python_test_build\\navigation\\target\\debug\\build\\icasadi_navigation-a17288686738e2f2\\out\\extern/auto_casadi_mapping_f1.o" "C:\\Users\\johan\\Documents\\GitHub\\Fleet-coordination\\python_test_build\\navigation\\target\\debug\\build\\icasadi_navigation-a17288686738e2f2\\out\\extern/interface.o"
+exit code: 0
+cargo:rustc-link-lib=static=icasadi
+cargo:rustc-link-search=native=C:\Users\johan\Documents\GitHub\Fleet-coordination\python_test_build\navigation\target\debug\build\icasadi_navigation-a17288686738e2f2\out
+cargo:rerun-if-changed=extern/auto_casadi_cost.c
+cargo:rerun-if-changed=extern/auto_casadi_grad.c
+cargo:rerun-if-changed=extern/auto_casadi_mapping_f2.c
+cargo:rerun-if-changed=extern/auto_casadi_mapping_f1.c
+cargo:rerun-if-changed=extern/interface.c
