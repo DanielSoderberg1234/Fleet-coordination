@@ -1,3 +1,4 @@
+from time import process_time
 import matplotlib.pyplot as plt
 import warnings
 warnings.filterwarnings("ignore")
@@ -54,13 +55,33 @@ def cost_inside_polygon(robots,b):
         return cost
 
 
+def cost_acceleration(u0,u1,qacc): 
+        return qacc*cs.dot(u0-u1, u0-u1)
+        
 
-vertices = np.array([[-.5, -.5], [.5, -.5], [.5, .5], [-.5, .5]])
-eqs = polygon_to_constraint(vertices)
-robots = {}
-robots[0] = {'State': [.1,.1,0]}
-cost = cost_inside_polygon(robots, eqs)
-print(cost)
+def cost_all_acceleration(robots,i,j,qacc): 
+    nu = 2
+    nx = 5
+    N = 20
+    cost = 0
 
+    for robot_id in robots: 
+        # Extract the content for each robot
+        #x,y,theta = robots[robot_id]['State']
+        u = robots['u']
+
+        u0 = u[:-2]
+        u1 = u[2:]
+
+    for i in range(0,N-2,2):
+        u0i = u0[i:i+2]
+        u1i = u1[i:i+2]
+        cost += cost_acceleration(u0,u1,qacc)
+
+    return cost
+            
+
+ref = cs.SX.sym('u',5)
+print(ref[3:])
 
 

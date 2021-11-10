@@ -15,11 +15,13 @@ def model(x,y,theta,u,ts):
     return x,y,theta
 
 def generate_straight_trajectory(x,y,theta,v,ts,N): 
-    states = [x,y,theta]
+    states = [x,y,theta,v,0]
 
     for i in range(0,N): 
+        if i == N-1: 
+            v = 0
         x,y,theta = model(x,y,theta,[v,0],ts=ts)
-        states.extend([x,y,theta])
+        states.extend([x,y,theta,v,0])
 
     return states
 
