@@ -7,5 +7,5 @@ To solve the optimization problem in the MPC-formulation the open source solver 
 Anaconda will be used as the package manager of this project, install anaconda according to the instructions on their webpage [Anaconda](https://www.anaconda.com/products/individual). Clone this repository and create the conda enviroment according to the following commands. 
 
 ```
-conda env create -f env/env.yml
+conda env create -f env/env_slim.yml
 ```
