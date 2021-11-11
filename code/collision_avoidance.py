@@ -211,7 +211,7 @@ class CollisionAvoidance:
         self.plot_map(robots)
         self.plot_dist(robots, iteration_step)
         self.plot_vel(robots, iteration_step)
-        plt.pause(0.01)
+        plt.pause(0.001)
         
         
     def run(self, robots):
@@ -225,9 +225,10 @@ class CollisionAvoidance:
         
 
 if __name__=="__main__": 
-
+    
+    """
     # Case 1 - Crossing
-    r_model = RobotModelData(nr_of_robots=2, nx=5, q = 100, r=10, qN=100, qaccW=10, qaccV=20)
+    r_model = RobotModelData(nr_of_robots=2, nx=5, q = 100, qtheta=100, r=10, qN=10, qaccW=10, qaccV=20)
     avoid = CollisionAvoidance(r_model)
     traj1 = generate_straight_trajectory(x=-2,y=0,theta=0,v=1,ts=0.1,N=40) # Trajectory from x=-1, y=0 driving straight to the right
     traj2 = generate_straight_trajectory(x=0,y=-2,theta=cs.pi/2,v=1,ts=0.1,N=40) # Trajectory from x=0,y=-1 driving straight up
@@ -240,7 +241,7 @@ if __name__=="__main__":
     avoid.run(robots)
     avoid.mng.kill()
     
-    """
+    
     # Case 2 - Towards eachother
     r_model = RobotModelData(nr_of_robots=2, nx=5)
     avoid = CollisionAvoidance(r_model)
@@ -255,7 +256,7 @@ if __name__=="__main__":
     
     
     # Case 3 - Behind eachother
-    r_model = RobotModelData(nr_of_robots=2, nx=5)
+    r_model = RobotModelData(nr_of_robots=2, nx=5, q = 100, r=10, qN=100, qaccW=10, qaccV=100)
     avoid = CollisionAvoidance(r_model)
     nx = 5
     traj1 = generate_straight_trajectory(x=-1,y=0,theta=0,v=1,ts=0.1,N=40) # Trajectory from x=-1, y=0 driving straight to the right
@@ -265,27 +266,27 @@ if __name__=="__main__":
     robots[1] = {"State": traj2[:nx], 'Ref': traj2[nx:20*nx+nx], 'Remainder': traj2[20*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b'}
     avoid.run(robots)
     avoid.mng.kill()
-    
-    
-    # Case 4 - 4 robots
-    avoid = CollisionAvoidance(nr_of_robots=5)
+    """
+
+    # Case 4 - Multiple Robots
+    r_model = RobotModelData(nr_of_robots=5, nx=5, q = 100, qtheta=100, r=10, qN=10, qaccW=10, qaccV=20)
+    avoid = CollisionAvoidance(r_model)
     traj1 = generate_straight_trajectory(x=-3,y=0,theta=0,v=1,ts=0.1,N=60) # Trajectory from x=-1, y=0 driving straight to the right
     traj2 = generate_straight_trajectory(x=3,y=0,theta=-cs.pi,v=1,ts=0.1,N=60) # Trajectory from x=0,y=-1 driving straight up
     traj3 = generate_straight_trajectory(x=1,y=-2,theta=cs.pi/2,v=1,ts=0.1,N=60) # Trajectory from x=0,y=-1 driving straight up
     traj4 = generate_straight_trajectory(x=-1,y=-2,theta=cs.pi/2,v=1,ts=0.1,N=60) # Trajectory from x=0,y=-1 driving straight up
     traj5 = generate_straight_trajectory(x=-3,y=2,theta=0,v=1,ts=0.1,N=60) # Trajectory from x=-1, y=0 driving straight to the right
     
-    N = 20
+    nx =5
     robots = {}
-    robots[0] = {"State": traj1[:3], 'Ref': traj1[3:N*3+3], 'Remainder': traj1[N*3+3:], 'u': [], 'Past_x': [], 'Past_y': [], 'Color': 'r'}
-    robots[1] = {"State": traj2[:3], 'Ref': traj2[3:N*3+3], 'Remainder': traj2[N*3+3:], 'u': [], 'Past_x': [], 'Past_y': [], 'Color': 'b'}
-    robots[2] = {"State": traj3[:3], 'Ref': traj3[3:N*3+3], 'Remainder': traj3[N*3+3:], 'u': [], 'Past_x': [], 'Past_y': [], 'Color': 'g'}
-    robots[3] = {"State": traj4[:3], 'Ref': traj4[3:N*3+3], 'Remainder': traj4[N*3+3:], 'u': [], 'Past_x': [], 'Past_y': [], 'Color': 'm'}
-    robots[4] = {"State": traj5[:3], 'Ref': traj5[3:N*3+3], 'Remainder': traj5[N*3+3:], 'u': [], 'Past_x': [], 'Past_y': [], 'Color': 'y'}
-
+    robots[0] = {"State": traj1[:nx], 'Ref': traj1[nx:20*nx+nx], 'Remainder': traj1[20*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'r'}
+    robots[1] = {"State": traj2[:nx], 'Ref': traj2[nx:20*nx+nx], 'Remainder': traj2[20*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b'}
+    robots[2] = {"State": traj3[:nx], 'Ref': traj3[nx:20*nx+nx], 'Remainder': traj3[20*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'g'}
+    robots[3] = {"State": traj4[:nx], 'Ref': traj4[nx:20*nx+nx], 'Remainder': traj4[20*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'm'}
+    robots[4] = {"State": traj5[:nx], 'Ref': traj5[nx:20*nx+nx], 'Remainder': traj5[20*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'y'}
+    
     avoid.run(robots)
     avoid.mng.kill()
-    """
 
     """
     # How to change all parameters in r_model

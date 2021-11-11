@@ -81,7 +81,6 @@ def cost_all_acceleration(robots,i,j,qacc):
     return cost
             
 
-ref = cs.SX.sym('u',5)
-print(ref[3:])
-
+u = [1.0,2.0]
+print(cs.fmin(*u))
 
