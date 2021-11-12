@@ -14,6 +14,74 @@ class MPCGenerator:
         self.name = "Fleet-collison"
         self.nr_of_robots = nr_of_robots
 
+    def shortest_dist_to_ref(self,ref,x,y,N):
+        """
+        Calculations according to: 
+            https://math.stackexchange.com/questions/330269/the-distance-from-a-point-to-a-line-segment
+        """
+        # Extract the references for readability
+        x_ref = ref[0::5]
+        y_ref = ref[1::5]
+
+        # Define the point we are at
+        p = cs.vertcat(x,y)
+        
+        # Get fist point for the line segment
+        s1 = cs.vertcat(x_ref[0],y_ref[0])
+        
+        # Variable for holding the distance to each line
+        dist_vec = cs.SX.ones(1)
+
+        # Loop over all possible line segments
+        for i in range(1,N):
+            # Get the next point
+            s2 = cs.vertcat(x_ref[i],y_ref[i])
+
+            #print("\nCurrent linesegment:  {}  <=>  {}  ".format(s1,s2))
+
+            # Calculate t_hat and t_star
+            t_hat = cs.dot(p-s1,s2-s1)/((s2[1]-s1[1])**2 + (s2[0]-s1[0])**2 + 1e-16)
+            
+            t_star = cs.fmin(cs.fmax(t_hat,0.0),1.0)
+            
+            # Get the closest point from the line s
+            st = s1 + t_star*(s2-s1)
+            #print("Closes point to:  {}  <=>  {}".format(p,st))
+            # Vector from point to the closest point on the line
+            dvec = st-p
+            
+            # Calculate distance
+            dist = dvec[0]**2+dvec[1]**2
+            #print("The distance is:  {} ".format(dist))
+            # Add to distance vector 
+            dist_vec = cs.horzcat(dist_vec, dist)
+
+            # Update s1
+            s1 = s2
+        
+
+        return cs.mmin(dist_vec[1:])
+
+    def cost_line(self,robots,qdist): 
+        nu = 2
+        nx = 5
+        N = 20
+
+        cost = 0
+
+        # Loop over all robots 
+        for robot_id in robots: 
+            # Extract the content for each robot
+            x,y,theta = robots[robot_id]['State']
+            u = robots[robot_id]['u']
+            ref = robots[robot_id]['Ref']
+
+            shortest_dist = self.shortest_dist_to_ref(ref,x,y,N)
+            cost += shortest_dist*qdist 
+
+        return cost   
+
+
     def cost_state_ref(self,x,y,theta,xref,yref,thetaref,q,qtheta): 
         # Cost for deviating from the current reference
         return q*( (xref-x)**2 + (yref-y)**2 ) + qtheta*(thetaref-theta)**2
@@ -175,7 +243,8 @@ class MPCGenerator:
 
         for i,j in zip( range(0,nx*N,nx), range(0,nu*N,nu)): 
             # Calculate the cost of all robots deviating from their reference
-            cost += self.cost_deviation_ref(robots,i,j,q,qtheta)
+            #cost += self.cost_deviation_ref(robots,i,j,q,qtheta)
+            cost += self.cost_line(robots,q)
             # Calculate the cost on all control actions
             cost += self.cost_all_control_action(robots,i,j,r)
             # Update the states
@@ -225,5 +294,5 @@ class MPCGenerator:
        
 
 if __name__=='__main__':
-    mpc = MPCGenerator(nr_of_robots=5)
+    mpc = MPCGenerator(nr_of_robots=2)
     mpc.build_mpc()

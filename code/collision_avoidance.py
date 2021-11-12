@@ -217,7 +217,7 @@ class CollisionAvoidance:
     def run(self, robots):
         plt.show(block=False)
         plt.tight_layout(pad=3.0)
-        plt.pause(5)
+        
 
         for i in range(0,60+1): 
             self.run_one_iteration(robots,iteration_step=i)
@@ -227,9 +227,9 @@ class CollisionAvoidance:
 
 if __name__=="__main__": 
     
-    """
+    
     # Case 1 - Crossing
-    r_model = RobotModelData(nr_of_robots=2, nx=5, q = 100, qtheta=100, r=10, qN=10, qaccW=10, qaccV=20)
+    r_model = RobotModelData(nr_of_robots=2, nx=5, q = 200, qobs=200, r=10, qN=10, qaccW=10, qaccV=20)
     avoid = CollisionAvoidance(r_model)
     traj1 = generate_straight_trajectory(x=-2,y=0,theta=0,v=1,ts=0.1,N=40) # Trajectory from x=-1, y=0 driving straight to the right
     traj2 = generate_straight_trajectory(x=0,y=-2,theta=cs.pi/2,v=1,ts=0.1,N=40) # Trajectory from x=0,y=-1 driving straight up
@@ -242,7 +242,7 @@ if __name__=="__main__":
     avoid.run(robots)
     avoid.mng.kill()
     
-    
+    """
     # Case 2 - Towards eachother
     r_model = RobotModelData(nr_of_robots=2, nx=5)
     avoid = CollisionAvoidance(r_model)
@@ -267,7 +267,7 @@ if __name__=="__main__":
     robots[1] = {"State": traj2[:nx], 'Ref': traj2[nx:20*nx+nx], 'Remainder': traj2[20*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b'}
     avoid.run(robots)
     avoid.mng.kill()
-    """
+    
 
     # Case 4 - Multiple Robots
     r_model = RobotModelData(nr_of_robots=5, nx=5, q = 100, qtheta=100, r=10, qN=10, qaccW=10, qaccV=20)
@@ -289,7 +289,7 @@ if __name__=="__main__":
     avoid.run(robots)
     avoid.mng.kill()
 
-    """
+    
     # How to change all parameters in r_model
     r_model = RobotModelData(nr_of_robots = 2,
                         nx = 3, 

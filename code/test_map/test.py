@@ -84,9 +84,9 @@ ref = [1,1,0,0,0,2,2,0,0,0,3,3,0,0,0]
 x = 1.5
 y = 2
 N = 3
-closest_point(ref,x,y,N)
+#closest_point(ref,x,y,N)
 
-
+print(ref[3:5])
 
 
 
