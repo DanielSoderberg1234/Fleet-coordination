@@ -217,6 +217,7 @@ class CollisionAvoidance:
     def run(self, robots):
         plt.show(block=False)
         plt.tight_layout(pad=3.0)
+        plt.pause(5)
 
         for i in range(0,60+1): 
             self.run_one_iteration(robots,iteration_step=i)

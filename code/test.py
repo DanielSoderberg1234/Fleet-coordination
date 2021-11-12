@@ -10,77 +10,83 @@ import casadi.casadi as cs
 from itertools import combinations
 from scipy.spatial import Delaunay
 
-def polygon_to_constraint(vertices): 
-    # Triangulate the vertices, returns the index of corners for that triangle
-    tr = Delaunay(vertices)
-    # Get the traingles defined by the vertices
-    tri = vertices[tr.simplices]
-    # Array of the equation
-    eqs = []
-    for t in tri: 
-        # Compute the halfspaces
-        A, b = compute_polytope_halfspaces(t)
-        # Put the values into the desired format
-        eqs.extend([A[0,0],A[0,1],b[0],A[1,0],A[1,1],b[1],A[2,0],A[2,1],b[2]])
+def closest_point(ref,x,y,N):
+    """
+        Calculations according to: 
+            https://math.stackexchange.com/questions/330269/the-distance-from-a-point-to-a-line-segment
+
+        A line is defined from two points s1 and s2 as: 
+            s(t) = s1 + t*(s2-s1)
+
+        Distance from a point p to the line is given by:
+            d(t) = ||s(t)-p||_2
+
+        Take derive and set it to zero to find optimal value of t: 
+            t_hat = <p-s1,s2-s1> / ||s2-s1||_2
+
+        Project to the line 
+            t_star = min(max(t_hat,0),1)
+
+        Closest point is now: 
+            st = s1 + t_star*(s2-s1)
+
+        Vector pointing from the point to the line: 
+            dt = st-p
+
+        Distance from the point to the line 
+            dist = dt(0)**2 + dt(1)**2
+    """
+    # Extract the references for readability
+    x_ref = ref[0::5]
+    y_ref = ref[1::5]
+
+    # Define the point we are at
+    p = cs.vertcat(x,y)
     
-    plt.plot(tri[0,:,0],tri[0,:,1])
-    plt.plot(tri[1,:,0],tri[1,:,1])
-    plt.plot(.1,.1,'x')
-    plt.show()
-    return eqs
+    # Get fist point for the line segment
+    s1 = cs.vertcat(x_ref[0],y_ref[0])
+    
+    # Variable for holding the distance to each line
+    dist_vec = cs.SX.ones(1)
 
-def cost_inside_polygon(robots,b): 
-        cost = 0.0
-        for robot_id in robots: 
-            x,y,theta = robots[robot_id]['State']
+    # Loop over all possible line segments
+    for i in range(1,N):
+        # Get the next point
+        s2 = cs.vertcat(x_ref[i],y_ref[i])
 
-            nr_of_traingles = 2
+        print("\nCurrent linesegment:  {}  <=>  {}  ".format(s1,s2))
 
-            nr_of_params = 9
-
-           
-            for i in range(0,nr_of_traingles): 
-                params = b[i*nr_of_params:(i+1)*nr_of_params]
-
-                inside = 1
-                for j in range(0,nr_of_params,3):
-                    h = params[j:j+3]
-                    inside *= cs.fmax(0.0, h[2] - h[1]*y - h[0]*x )
-
-                print(inside)
-
-                cost += 100*inside
-
-
-        return cost
-
-
-def cost_acceleration(u0,u1,qacc): 
-        return qacc*cs.dot(u0-u1, u0-u1)
+        # Calculate t_hat and t_star
+        t_hat = cs.dot(p-s1,s2-s1)/((s2[1]-s1[1])**2 + (s2[0]-s1[0])**2 + 1e-16)
         
+        t_star = cs.fmin(cs.fmax(t_hat,0.0),1.0)
+        
+        # Get the closest point from the line s
+        st = s1 + t_star*(s2-s1)
+        print("Closes point to:  {}  <=>  {}".format(p,st))
+        # Vector from point to the closest point on the line
+        dvec = st-p
+        
+        # Calculate distance
+        dist = dvec[0]**2+dvec[1]**2
+        print("The distance is:  {} ".format(dist))
+        # Add to distance vector 
+        dist_vec = cs.horzcat(dist_vec, dist)
 
-def cost_all_acceleration(robots,i,j,qacc): 
-    nu = 2
-    nx = 5
-    N = 20
-    cost = 0
+        # Update s1
+        s1 = s2
+     
 
-    for robot_id in robots: 
-        # Extract the content for each robot
-        #x,y,theta = robots[robot_id]['State']
-        u = robots['u']
+    return cs.mmin(dist_vec[1:])
 
-        u0 = u[:-2]
-        u1 = u[2:]
+# Ref vector is x,y,theta,v,w,...
+ref = [1,1,0,0,0,2,2,0,0,0,3,3,0,0,0]
+x = 1.5
+y = 2
+N = 3
+closest_point(ref,x,y,N)
 
-    for i in range(0,N-2,2):
-        u0i = u0[i:i+2]
-        u1i = u1[i:i+2]
-        cost += cost_acceleration(u0,u1,qacc)
 
-    return cost
-            
 
-u = [1.0,2.0]
-print(cs.fmin(*u))
+
 
