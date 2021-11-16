@@ -30,7 +30,7 @@ class MPCGenerator:
         s1 = cs.vertcat(x_ref[0],y_ref[0])
         
         # Variable for holding the distance to each line
-        dist_vec = cs.SX.ones(1)
+        dist_vec = None
 
         # Loop over all possible line segments
         for i in range(1,N):
@@ -54,13 +54,16 @@ class MPCGenerator:
             dist = dvec[0]**2+dvec[1]**2
             #print("The distance is:  {} ".format(dist))
             # Add to distance vector 
-            dist_vec = cs.horzcat(dist_vec, dist)
+            if dist_vec == None: 
+                dist_vec = dist
+            else: 
+                dist_vec = cs.horzcat(dist_vec, dist)
 
             # Update s1
             s1 = s2
         
 
-        return cs.mmin(dist_vec[1:])
+        return cs.mmin(dist_vec[:])
 
     def cost_line(self,robots,qdist): 
         nu = 2
@@ -282,7 +285,7 @@ class MPCGenerator:
             .with_optimizer_name("robot_{}_solver".format(self.nr_of_robots))
 
         solver_config = og.config.SolverConfiguration()\
-            .with_tolerance(1e-5)\
+            .with_tolerance(1e-4)\
             .with_max_duration_micros(50000)\
             .with_max_outer_iterations(15)
         
