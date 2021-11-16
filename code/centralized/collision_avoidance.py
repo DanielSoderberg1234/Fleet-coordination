@@ -68,6 +68,7 @@ class CollisionAvoidance:
         robot['State'] = [x,y,theta,robot['u'][0],robot['u'][1]]
 
     def update_ref(self,robot):
+        """
         x,y = robot['State'][:2]
         
         while True: 
@@ -75,13 +76,14 @@ class CollisionAvoidance:
 
             if cs.sqrt( (xc-x)**2 + (yc-y)**2 ) > 0.2 or ( robot['Ref'][0]==robot['Ref'][5] and robot['Ref'][1]==robot['Ref'][6]):
                 break  
+        """
         
-            # Shift reference once step to the left
-            robot['Ref'][:self.nx*(self.N-1)] = robot['Ref'][self.nx:]
+        # Shift reference once step to the left
+        robot['Ref'][:self.nx*(self.N-1)] = robot['Ref'][self.nx:]
 
-            if len(robot['Remainder']) > 0:
-                robot['Ref'][-self.nx:] = robot['Remainder'][:self.nx]
-                del robot['Remainder'][:self.nx]
+        if len(robot['Remainder']) > 0:
+            robot['Ref'][-self.nx:] = robot['Remainder'][:self.nx]
+            del robot['Remainder'][:self.nx]
 
     def plot_robot(self,x,y,theta): 
         # Width of robot
@@ -235,7 +237,7 @@ class CollisionAvoidance:
         plt.tight_layout(pad=3.0)
         
 
-        for i in range(0,40+1): 
+        for i in range(0,60+1): 
             self.run_one_iteration(robots,iteration_step=i)
         plt.pause(2)
         print("Avg solvtime: ", self.time/41," ms")
@@ -253,7 +255,7 @@ if __name__=="__main__":
     
     """
     # Case 1 - Crossing
-    r_model = RobotModelData(nr_of_robots=2, nx=5, q = 100, qobs=200, r=10, qN=200, qaccW=10, qaccV=50)
+    r_model = RobotModelData(nr_of_robots=2, nx=5, q = 100, qobs=200, r=50, qN=200, qaccW=10, qaccV=50)
     avoid = CollisionAvoidance(r_model)
     traj1 = generate_straight_trajectory(x=-2,y=0,theta=0,v=1,ts=0.1,N=40) # Trajectory from x=-1, y=0 driving straight to the right
     traj2 = generate_straight_trajectory(x=0,y=-2,theta=cs.pi/2,v=1,ts=0.1,N=40) # Trajectory from x=0,y=-1 driving straight up
@@ -268,7 +270,7 @@ if __name__=="__main__":
     
     
     # Case 2 - Towards eachother
-    r_model = RobotModelData(nr_of_robots=2, nx=5)
+    r_model = RobotModelData(nr_of_robots=2, nx=5, q = 100, qobs=200, r=10, qN=200, qaccW=10, qaccV=50)
     avoid = CollisionAvoidance(r_model)
     nx =5
     traj1 = generate_straight_trajectory(x=-2,y=0,theta=0,v=1,ts=0.1,N=40) # Trajectory from x=-1, y=0 driving straight to the right
@@ -292,13 +294,13 @@ if __name__=="__main__":
     avoid.run(robots)
     avoid.mng.kill()
     """
-
+    
     # Case 4 - Multiple Robots
     N_steps = 60
-    r_model = RobotModelData(nr_of_robots=5, nx=5, q=200, r=1, qaccW=10, qaccV=20)
+    r_model = RobotModelData(nr_of_robots=5, nx=5, qobs=200, r=50, qN=200, qaccW=10, qaccV=50)
     avoid = CollisionAvoidance(r_model)
     traj1 = generate_straight_trajectory(x=-4,y=0,theta=0,v=1,ts=0.1,N=N_steps) # Trajectory from x=-1, y=0 driving straight to the right
-    traj2 = generate_straight_trajectory(x=4,y=1,theta=-cs.pi,v=1,ts=0.1,N=N_steps) # Trajectory from x=0,y=-1 driving straight up
+    traj2 = generate_straight_trajectory(x=4,y=0,theta=-cs.pi,v=1,ts=0.1,N=N_steps) # Trajectory from x=0,y=-1 driving straight up
     traj3 = generate_straight_trajectory(x=1,y=-2,theta=cs.pi/2,v=1,ts=0.1,N=N_steps) # Trajectory from x=0,y=-1 driving straight up
     traj4 = generate_straight_trajectory(x=-1,y=-2,theta=cs.pi/2,v=1,ts=0.1,N=N_steps) # Trajectory from x=0,y=-1 driving straight up
     traj5 = generate_straight_trajectory(x=-4,y=2,theta=0,v=1,ts=0.1,N=N_steps) # Trajectory from x=-1, y=0 driving straight to the right
