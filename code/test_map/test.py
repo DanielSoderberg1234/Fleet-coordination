@@ -72,8 +72,6 @@ p  = cs.vertcat(2,2)
 st, ang = closest_point_and_ang(s1,s2,p)
 
 
-print(ang)
-
 
 
 

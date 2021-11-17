@@ -130,12 +130,15 @@ class CollisionAvoidance:
         # Get the reference 
         ref = robot['Ref']
 
-        x_ref = ref[0::5]
-        y_ref = ref[1::5]
+        x_ref = [x]
+        y_ref = [y]
+
+        x_ref.extend(ref[0::5])
+        y_ref.extend(ref[1::5])
 
         plt.plot(robot['Past_x'],robot['Past_y'],'-o', color=robot['Color'], label="Robot{}".format(robot_id))
         plt.plot(x_pred,y_pred,'-o', alpha=0.2,color=robot['Color'])
-        plt.plot(x_ref,y_ref,'-o',color='k',alpha=0.3)
+        plt.plot(x_ref,y_ref,'-x',color='k',alpha=1)
         self.plot_robot(x,y,theta)
         #self.plot_safety_cricles(x,y)
 
@@ -217,7 +220,7 @@ class CollisionAvoidance:
     def distributed_algorithm(self,robots,predicted_states):
         
         
-        pmax = 3
+        pmax = 2
         for i in range(0,pmax):
             for robot_id in robots: 
                 state = robots[robot_id]['State']
@@ -280,7 +283,7 @@ if __name__=="__main__":
     
     
     # Case 1 - Crossing
-    r_model = RobotModelData(nr_of_robots=2, nx=5, qobs=200, qN=200, r=10)
+    r_model = RobotModelData(nr_of_robots=2, nx=5, q = 200, qobs=1000, r=50, qN=200, qaccW=10, qaccV=50)
     avoid = CollisionAvoidance(r_model)
     traj1 = generate_straight_trajectory(x=-2,y=0,theta=0,v=1,ts=0.1,N=40) # Trajectory from x=-1, y=0 driving straight to the right
     traj2 = generate_straight_trajectory(x=0,y=-2,theta=cs.pi/2,v=1,ts=0.1,N=40) # Trajectory from x=0,y=-1 driving straight up

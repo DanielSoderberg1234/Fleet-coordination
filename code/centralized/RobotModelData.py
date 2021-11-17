@@ -18,10 +18,12 @@ class RobotModelData:
     qobs: float = 200       # Cost for being closer than r to the other robot
     qaccV: float = 100
     qaccW: float = 100
+    qpol: float = 200
+    qbounds: float = 200
 
 
     def get_weights(self):
-        return [self.q, self.qtheta, self.r, self.qN, self.qthetaN, self.qobs, self.qaccV, self.qaccW]
+        return [self.q, self.qtheta, self.r, self.qN, self.qthetaN, self.qobs, self.qaccV, self.qaccW, self.qpol, self.qbounds]
 
 
 

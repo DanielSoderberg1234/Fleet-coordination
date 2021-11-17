@@ -16,6 +16,57 @@ class MPCGenerator:
         # Cost for deviating from the current reference
         return q*( (xref-x)**2 + (yref-y)**2 ) + qtheta*(thetaref-theta)**2
 
+    def cost_lines(self,ref,x,y,N):
+        """
+        Calculations according to: 
+            https://math.stackexchange.com/questions/330269/the-distance-from-a-point-to-a-line-segment
+        """
+        # Extract the references for readability
+        x_ref = ref[0::5]
+        y_ref = ref[1::5]
+
+        # Define the point we are at
+        p = cs.vertcat(x,y)
+        
+        # Get fist point for the line segment
+        s1 = cs.vertcat(x_ref[0],y_ref[0])
+        
+        # Variable for holding the distance to each line
+        dist_vec = None
+
+        # Loop over all possible line segments
+        for i in range(1,N):
+            # Get the next point
+            s2 = cs.vertcat(x_ref[i],y_ref[i])
+
+            #print("\nCurrent linesegment:  {}  <=>  {}  ".format(s1,s2))
+
+            # Calculate t_hat and t_star
+            t_hat = cs.dot(p-s1,s2-s1)/((s2[1]-s1[1])**2 + (s2[0]-s1[0])**2 + 1e-16)
+            
+            t_star = cs.fmin(cs.fmax(t_hat,0.0),1.0)
+            
+            # Get the closest point from the line s
+            st = s1 + t_star*(s2-s1)
+            #print("Closes point to:  {}  <=>  {}".format(p,st))
+            # Vector from point to the closest point on the line
+            dvec = st-p
+            
+            # Calculate distance
+            dist = dvec[0]**2+dvec[1]**2
+            #print("The distance is:  {} ".format(dist))
+            # Add to distance vector 
+            if dist_vec == None: 
+                dist_vec = dist
+            else: 
+                dist_vec = cs.horzcat(dist_vec, dist)
+
+            # Update s1
+            s1 = s2
+        
+
+        return cs.mmin(dist_vec[:])
+
     def cost_acceleration(self,u0,u1,qaccV,qaccW): 
         cost = 0
         cost += qaccV*(u1[0]-u0[0])**2
@@ -56,6 +107,7 @@ class MPCGenerator:
         ref = cs.SX.sym('p',nx*(N+1))
 
         c = cs.SX.sym('c',N*2)
+        #c = cs.SX.sym('c',2)
 
         Q = cs.SX.sym('Q',8)
 
@@ -80,6 +132,7 @@ class MPCGenerator:
         # Cost for all acceleration 
         cost += self.cost_all_acceleration(u,qaccV,qaccW)
         
+        avoid_col = True
 
         for i,j,k in zip( range(0,nx*N,nx), range(0,nu*N,nu),range(0,2*N,2)): 
             # Get the data for the current steps
@@ -89,7 +142,8 @@ class MPCGenerator:
             uj = u[j:j+nu]
 
             # Calculate the cost of all robots deviating from their reference
-            cost += self.cost_state_ref(x,y,theta,xref,yref,thetaref,q,qtheta)
+            #cost += self.cost_state_ref(x,y,theta,xref,yref,thetaref,q,qtheta)
+            cost += q*self.cost_lines(ref,x,y,N)
             
             # Calculate the cost on all control actions
             cost += r*cs.dot(uref-uj,uref-uj)
@@ -102,6 +156,11 @@ class MPCGenerator:
             ck = c[k:k+2]
             xc,yc = ck[0],ck[1]
             cost += qobs*cs.fmax(0.0, 1.0 - (x-xc)**2 - (y-yc)**2)
+            
+            #if avoid_col: 
+            #    xc, yc = c[0],c[1]
+            #    cost += qobs*cs.fmax(0.0, 1.0-(x-xc)**2-(y-yc)**2)
+            #    avoid_col = False
             
 
 

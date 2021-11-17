@@ -2,7 +2,6 @@ import opengen as og
 import casadi.casadi as cs
 import matplotlib.pyplot as plt
 import numpy as np
-#from code.test import cost_all_acceleration
 from function_lib import model
 from itertools import combinations
 
@@ -200,6 +199,34 @@ class MPCGenerator:
             
         return cost
 
+    def cost_inside_polygon(self,robots,o,qobs): 
+        cost = 0.0
+        for robot_id in robots: 
+            x,y,theta = robots[robot_id]['State']
+
+            inside = 1
+            for j in range(0,12,3):
+                h = o[j:j+3]
+                inside *= cs.fmax(0.0, h[2] - h[1]*y - h[0]*x )
+
+            cost += qobs*inside
+
+        return cost
+
+    def cost_outside_boundaries(self,robots,b,qb): 
+        cost = 0.0
+        for robot_id in robots: 
+            x,y,theta = robots[robot_id]['State']
+
+            outside = 0
+            for j in range(0,12,3):
+                h = b[j:j+3]
+                outside += cs.fmin(0.0, h[2] - h[1]*y - h[0]*x )**2
+
+            cost += qb*outside
+
+        return cost
+
     def bound_control_action(self, vmin,vmax,wmin,wmax,N): 
         # But hard constraints on the velocities of the robot
         N = self.nr_of_robots*N
@@ -212,10 +239,16 @@ class MPCGenerator:
         # Some predefined values, should maybe be read from a config file?
         (nu, nx, N, ts) = (2, 5, 20, 0.1)
 
-        # Input vector 2 trajectories, N long with nx states in each i=0,1,2,..,N-1 and the 6 last are the weights
+        # Input vector 2 trajectories, N long with nx states in each i=0,1,2,..,N-1
         p = cs.SX.sym('p',self.nr_of_robots*nx*(N+1))
 
-        Q = cs.SX.sym('Q',8)
+        # Number of weights 
+        Q = cs.SX.sym('Q',10)
+
+        # Parameters for obstacles and boundaries
+        o = cs.SX.sym('o',12)
+
+        b = cs.SX.sym('b',12)
 
         # Optimization variables 2 robots each with nu control inputs for N steps
         u = cs.SX.sym('u',self.nr_of_robots*nu*N)
@@ -235,8 +268,7 @@ class MPCGenerator:
 
         
         # Get weights from input vectir as the last elements
-        #q, qtheta, r, qN, qthetaN,qobs = p[-6],p[-5],p[-4],p[-3],p[-2],p[-1]
-        q, qtheta, r, qN, qthetaN,qobs, qaccV,qaccW = Q[0],Q[1],Q[2],Q[3],Q[4],Q[5],Q[6],Q[7]
+        q, qtheta, r, qN, qthetaN,qobs, qaccV,qaccW, qpol, qbound = Q[0],Q[1],Q[2],Q[3],Q[4],Q[5],Q[6],Q[7],Q[8],Q[9]
 
         # Define the cost
         cost = 0
@@ -254,6 +286,10 @@ class MPCGenerator:
             self.update_robot_states(robots,i,j,ts)
             # Calculate the cost of colliding
             cost += self.cost_collision(robots, qobs)  
+            # Cost of being outside boundaries
+            cost += self.cost_outside_boundaries(robots,b,qbound)
+            # Cost of being inside an object 
+            cost += self.cost_inside_polygon(robots, o, qpol)
             
         # Add acceleration cost
         cost += self.cost_all_acceleration(robots,qaccV,qaccW)
@@ -265,7 +301,7 @@ class MPCGenerator:
         bounds = self.bound_control_action(vmin=0.0,vmax=1.5,wmin=-1,wmax=1,N=N)
         
         # Concate all parameters
-        p = cs.vertcat(p,Q)
+        p = cs.vertcat(p,Q,o,b)
 
         return u,p,cost,bounds
 
@@ -297,5 +333,5 @@ class MPCGenerator:
        
 
 if __name__=='__main__':
-    mpc = MPCGenerator(nr_of_robots=5)
+    mpc = MPCGenerator(nr_of_robots=2)
     mpc.build_mpc()
