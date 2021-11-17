@@ -204,12 +204,16 @@ class MPCGenerator:
         for robot_id in robots: 
             x,y,theta = robots[robot_id]['State']
 
-            inside = 1
-            for j in range(0,12,3):
-                h = o[j:j+3]
-                inside *= cs.fmax(0.0, h[2] - h[1]*y - h[0]*x )
+            for i in range(0,5): 
+                # Parameter for each object
+                ob = o[i*12:(i+1)*12]
 
-            cost += qobs*inside
+                inside = 1
+                for j in range(0,12,3):
+                    h = ob[j:j+3]
+                    inside *= cs.fmax(0.0, h[2] - h[1]*y - h[0]*x )
+
+                cost += qobs*inside
 
         return cost
 
@@ -246,7 +250,7 @@ class MPCGenerator:
         Q = cs.SX.sym('Q',10)
 
         # Parameters for obstacles and boundaries
-        o = cs.SX.sym('o',12)
+        o = cs.SX.sym('o',5*12)
 
         b = cs.SX.sym('b',12)
 

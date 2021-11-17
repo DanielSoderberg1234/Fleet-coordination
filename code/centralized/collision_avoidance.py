@@ -139,6 +139,8 @@ class CollisionAvoidance:
         #self.plot_safety_cricles(x,y)
 
     def plot_polygon(self,polygon): 
+        if polygon == None: 
+            return
         x,y = polygon.exterior.xy 
         plt.plot(x,y,color='k')
 
@@ -149,7 +151,8 @@ class CollisionAvoidance:
             self.plot_for_one_robot(robots[robot_id], robot_id)
 
         # Plot objects 
-        self.plot_polygon(obstacles['Static'][0])
+        for ob in obstacles['Static']: 
+            self.plot_polygon(ob)
         self.plot_polygon(obstacles['Boundaries'][0])
         
         plt.xlim(-5,5)
@@ -210,6 +213,8 @@ class CollisionAvoidance:
         plt.grid()
 
     def polygon_to_eqs(self, polygon): 
+        if polygon == None: 
+            return [0]*12
         vertices = polygon.exterior.coords[:-1]
         A, b = compute_polytope_halfspaces(vertices)
         return [A[0,0],A[0,1],b[0],A[1,0],A[1,1],b[1],A[2,0],A[2,1],b[2],A[3,0],A[3,1],b[3] ]
@@ -225,8 +230,10 @@ class CollisionAvoidance:
         # Append the weights
         p.extend(self.weights)
 
-        eqs = self.polygon_to_eqs(obstacles['Static'][0])
-        p.extend(eqs)
+        
+        for ob in obstacles['Static']: 
+            eqs = self.polygon_to_eqs(ob)
+            p.extend(eqs)
 
         eqs = self.polygon_to_eqs(obstacles['Boundaries'][0])
         p.extend(eqs)
@@ -264,7 +271,7 @@ class CollisionAvoidance:
         plt.tight_layout(pad=3.0)
         
 
-        for i in range(0,60+1): 
+        for i in range(0,80+1): 
             self.run_one_iteration(robots,obstacles,iteration_step=i)
         plt.pause(2)
         print("Avg solvtime: ", self.time/41," ms")
@@ -278,18 +285,23 @@ class CollisionAvoidance:
         plt.show()
         
 
+def square_polygon(xc,yc,width): 
+    return Polygon( [[xc-width/2, yc-width/2],[xc+width/2, yc-width/2],[xc+width/2, yc+width/2],[xc-width/2, yc+width/2] ])
+
 if __name__=="__main__": 
 
+    
     obstacles = {}
-    obstacles['Static'] =  [Polygon([[-.2, -.2], [.2, -.2], [.2, .2], [-.2, .2]]) ]
+    obstacles['Static'] =  [square_polygon(-1,-1,1), square_polygon(1,-1,1), square_polygon(1,1,1), square_polygon(-1,1,1), None ]
     obstacles['Boundaries'] =  [Polygon([[-4, -4], [4, -4], [4, 4], [-4, 4]]) ]
     
     
+    
     # Case 1 - Crossing
-    r_model = RobotModelData(nr_of_robots=2, nx=5, qobs=200, r=50, qN=200, qaccW=10, qaccV=50)
+    r_model = RobotModelData(nr_of_robots=2, nx=5, qobs=200, r=50, qN=200, qaccW=20, qaccV=20, qpol=200, qbounds=200)
     avoid = CollisionAvoidance(r_model)
-    traj1 = generate_straight_trajectory(x=-2,y=0,theta=0,v=1,ts=0.1,N=40) # Trajectory from x=-1, y=0 driving straight to the right
-    traj2 = generate_straight_trajectory(x=0,y=-2,theta=cs.pi/2,v=1,ts=0.1,N=40) # Trajectory from x=0,y=-1 driving straight up
+    traj1 = generate_straight_trajectory(x=-3.5,y=0,theta=0,v=1,ts=0.1,N=80) # Trajectory from x=-1, y=0 driving straight to the right
+    traj2 = generate_straight_trajectory(x=0,y=-3.5,theta=cs.pi/2,v=1,ts=0.1,N=80) # Trajectory from x=0,y=-1 driving straight up
     
     nx =5
     robots = {}
@@ -328,7 +340,7 @@ if __name__=="__main__":
     
     # Case 4 - Multiple Robots
     N_steps = 60
-    r_model = RobotModelData(nr_of_robots=5, nx=5, q=200,qobs=200, r=50, qN=200, qaccW=10, qaccV=50)
+    r_model = RobotModelData(nr_of_robots=5, nx=5, q=200, qobs=200, r=50, qN=200, qaccW=50, qaccV=50)
     avoid = CollisionAvoidance(r_model)
     traj1 = generate_straight_trajectory(x=-4,y=0,theta=0,v=1,ts=0.1,N=N_steps) # Trajectory from x=-1, y=0 driving straight to the right
     traj2 = generate_straight_trajectory(x=4,y=1,theta=-cs.pi,v=1,ts=0.1,N=N_steps) # Trajectory from x=0,y=-1 driving straight up
@@ -344,7 +356,7 @@ if __name__=="__main__":
     robots[3] = {"State": traj4[:nx], 'Ref': traj4[nx:20*nx+nx], 'Remainder': traj4[20*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'm'}
     robots[4] = {"State": traj5[:nx], 'Ref': traj5[nx:20*nx+nx], 'Remainder': traj5[20*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'y'}
     
-    avoid.run(robots)
+    avoid.run(robots, obstacles)
     avoid.mng.kill()
     
     
