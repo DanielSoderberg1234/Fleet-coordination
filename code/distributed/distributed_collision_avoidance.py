@@ -211,16 +211,16 @@ class CollisionAvoidance:
         p.extend(self.weights)
 
         # Get predicted states for the other robot
+        #TODO: This is prob were we should remove some of the predicted states, but 
         for i in predicted_states: 
             if robot_id != i: 
-                p.extend(predicted_states[i])
+                p.extend(predicted_states[i][0:2])
 
         return p
 
     def distributed_algorithm(self,robots,predicted_states):
-        
-        
-        pmax = 2
+        ustar = [[]*self.nu]*len(robots) #List of outputs
+        pmax = 20
         for i in range(0,pmax):
             for robot_id in robots: 
                 state = robots[robot_id]['State']
@@ -235,7 +235,7 @@ class CollisionAvoidance:
                 self.time_vec.append((t2-t1)/10**6 )
 
                 # Get the solver output 
-                ustar = solution['solution'] 
+                ustar[robot_id] = solution['solution'] 
 
                 # Predict future state
                 x,y,theta = state[0], state[1],state[2]
@@ -245,6 +245,12 @@ class CollisionAvoidance:
                 predicted_states[robot_id] = states
 
                 robots[robot_id]['u'] = ustar
+
+            ustar_i_old = ustar_i
+            ustar_i = viktningsgrejen
+
+            if max(ustar_i - ustar_i_old) < epsi:
+                break
 
 
     def run_one_iteration(self,robots,predicted_states,iteration_step): 
