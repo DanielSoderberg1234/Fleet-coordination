@@ -297,10 +297,10 @@ class CollisionAvoidance:
 if __name__=="__main__": 
     
     
-    case_nr = 4
+    case_nr = 1
 
     if case_nr == 1:
-        r_model = RobotModelData(nr_of_robots=2, nx=5, q = 200, qobs=1000, r=50, qN=200, qaccW=10, qaccV=50)
+        r_model = RobotModelData(nr_of_robots=2, nx=5, q = 200, qtheta = 100000, qobs=1000, r=50, qN=200, qaccW=10, qaccV=50)
         avoid = CollisionAvoidance(r_model)
         traj1 = generate_straight_trajectory(x=-2,y=0,theta=0,v=1,ts=0.1,N=40) # Trajectory from x=-1, y=0 driving straight to the right
         traj2 = generate_straight_trajectory(x=0,y=-2,theta=cs.pi/2,v=1,ts=0.1,N=40) # Trajectory from x=0,y=-1 driving straight up

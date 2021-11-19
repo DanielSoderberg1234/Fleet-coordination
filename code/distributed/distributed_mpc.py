@@ -147,7 +147,8 @@ class MPCGenerator:
             cost += q*self.cost_lines(ref,x,y,N)
             
             # Calculate the cost on all control actions
-            cost += r*cs.dot(uref-uj,uref-uj)
+            #cost += r*cs.dot(uref-uj,uref-uj)
+            cost += r*(uref[0]-uj[0])**2 + 10*r*(uref[1]-uj[1])**2
             #cost += r*cs.dot(uj,uj)
 
             # Update the states
@@ -158,6 +159,8 @@ class MPCGenerator:
             for k in range(self.nr_of_robots-1):
                 ck = c[k:k+2]
                 xc,yc = ck[0],ck[1]
+                #cost += qobs*cs.fmax(0.0, 1.0 - (x-xc)**2 - (y-yc)**2)
+                #cost += qobs/10*cs.fmax(0.0, 2.0**2 - (x-xc)**2 - (y-yc)**2)
                 cost += qobs*cs.fmax(0.0, 1.0 - (x-xc)**2 - (y-yc)**2)
 
         # Get the data for the last step
