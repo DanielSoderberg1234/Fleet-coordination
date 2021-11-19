@@ -189,7 +189,7 @@ class MPCGenerator:
             .with_tcp_interface_config()
 
         meta = og.config.OptimizerMeta()\
-            .with_optimizer_name("distributed_solver")
+            .with_optimizer_name("distributed_solver_{}_robots".format(self.nr_of_robots))
 
         solver_config = og.config.SolverConfiguration()\
             .with_tolerance(1e-4)\

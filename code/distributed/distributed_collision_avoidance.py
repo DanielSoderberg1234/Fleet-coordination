@@ -32,7 +32,7 @@ class CollisionAvoidance:
 
 
         # Create the solver and open a tcp port to it 
-        self.mng = og.tcp.OptimizerTcpManager("distributed1/distributed_solver")
+        self.mng = og.tcp.OptimizerTcpManager("distributed1/distributed_solver_{}_robots".format(self.nr_of_robots))
         self.mng.start()
         self.mng.ping()
 
@@ -219,9 +219,15 @@ class CollisionAvoidance:
         return p
 
     def distributed_algorithm(self,robots,predicted_states):
-        ustar = [[]*self.nu]*len(robots) #List of outputs
+        
+        u_p_old = [robots[robot_id]['Ref'][3:5] for robot_id in robots]
+
+        w = 0.5
         pmax = 20
+        epsilon = 0.01
+
         for i in range(0,pmax):
+            K = 0
             for robot_id in robots: 
                 state = robots[robot_id]['State']
                 ref = robots[robot_id]['Ref']
@@ -235,21 +241,24 @@ class CollisionAvoidance:
                 self.time_vec.append((t2-t1)/10**6 )
 
                 # Get the solver output 
-                ustar[robot_id] = solution['solution'] 
+                ustar = solution['solution'] 
+
+                u_p = [w*ustar[i] + (1-w)*u_p_old[robot_id][i] for i in range(self.nu)]
+                
+                K = max(K, max([u_p[i] - u_p_old[robot_id][i] for i in range(self.nu)]))
+                
+                u_p_old[robot_id] = u_p
 
                 # Predict future state
                 x,y,theta = state[0], state[1],state[2]
 
-                states = self.predicted_states(x,y,theta,ustar)
+                states = self.predicted_states(x,y,theta,u_p)
             
                 predicted_states[robot_id] = states
 
-                robots[robot_id]['u'] = ustar
+                robots[robot_id]['u'] = u_p
 
-            ustar_i_old = ustar_i
-            ustar_i = viktningsgrejen
-
-            if max(ustar_i - ustar_i_old) < epsi:
+            if K < epsilon:
                 break
 
 
@@ -288,20 +297,47 @@ class CollisionAvoidance:
 if __name__=="__main__": 
     
     
-    # Case 1 - Crossing
-    r_model = RobotModelData(nr_of_robots=2, nx=5, q = 200, qobs=1000, r=50, qN=200, qaccW=10, qaccV=50)
-    avoid = CollisionAvoidance(r_model)
-    traj1 = generate_straight_trajectory(x=-2,y=0,theta=0,v=1,ts=0.1,N=40) # Trajectory from x=-1, y=0 driving straight to the right
-    traj2 = generate_straight_trajectory(x=0,y=-2,theta=cs.pi/2,v=1,ts=0.1,N=40) # Trajectory from x=0,y=-1 driving straight up
+    case_nr = 4
+
+    if case_nr == 1:
+        r_model = RobotModelData(nr_of_robots=2, nx=5, q = 200, qobs=1000, r=50, qN=200, qaccW=10, qaccV=50)
+        avoid = CollisionAvoidance(r_model)
+        traj1 = generate_straight_trajectory(x=-2,y=0,theta=0,v=1,ts=0.1,N=40) # Trajectory from x=-1, y=0 driving straight to the right
+        traj2 = generate_straight_trajectory(x=0,y=-2,theta=cs.pi/2,v=1,ts=0.1,N=40) # Trajectory from x=0,y=-1 driving straight up
+
+        nx =5
+        robots = {}
+        robots[0] = {"State": traj1[:nx], 'Ref': traj1[nx:20*nx+nx], 'Remainder': traj1[20*nx+nx:], 'u': [0,0], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'r'}
+        robots[1] = {"State": traj2[:nx], 'Ref': traj2[nx:20*nx+nx], 'Remainder': traj2[20*nx+nx:], 'u': [0,0], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b'}
+        predicted_states = {0: [0]*20*2, 1: [0]*20*2}
+        avoid.run(robots, predicted_states)
+        avoid.mng.kill()
     
-    nx =5
-    robots = {}
-    robots[0] = {"State": traj1[:nx], 'Ref': traj1[nx:20*nx+nx], 'Remainder': traj1[20*nx+nx:], 'u': [0,0], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'r'}
-    robots[1] = {"State": traj2[:nx], 'Ref': traj2[nx:20*nx+nx], 'Remainder': traj2[20*nx+nx:], 'u': [0,0], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b'}
-    predicted_states = {0: [0]*20*2, 1: [0]*20*2}
+
+    if case_nr == 4:
+        # Case 4 - Multiple Robots
+        N_steps = 60
+        r_model = RobotModelData(nr_of_robots=5, nx=5, q=200, qobs=200, r=50, qN=200, qaccW=50, qaccV=50)
+        avoid = CollisionAvoidance(r_model)
+        traj1 = generate_straight_trajectory(x=-4,y=0,theta=0,v=1,ts=0.1,N=N_steps) # Trajectory from x=-1, y=0 driving straight to the right
+        traj2 = generate_straight_trajectory(x=4,y=1,theta=-cs.pi,v=1,ts=0.1,N=N_steps) # Trajectory from x=0,y=-1 driving straight up
+        traj3 = generate_straight_trajectory(x=1,y=-2,theta=cs.pi/2,v=1,ts=0.1,N=N_steps) # Trajectory from x=0,y=-1 driving straight up
+        traj4 = generate_straight_trajectory(x=-1,y=-2,theta=cs.pi/2,v=1,ts=0.1,N=N_steps) # Trajectory from x=0,y=-1 driving straight up
+        traj5 = generate_straight_trajectory(x=-4,y=2,theta=0,v=1,ts=0.1,N=N_steps) # Trajectory from x=-1, y=0 driving straight to the right
+   
+        nx =5
+        robots = {}
+        robots[0] = {"State": traj1[:nx], 'Ref': traj1[nx:20*nx+nx], 'Remainder': traj1[20*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'r'}
+        robots[1] = {"State": traj2[:nx], 'Ref': traj2[nx:20*nx+nx], 'Remainder': traj2[20*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b'}
+        robots[2] = {"State": traj3[:nx], 'Ref': traj3[nx:20*nx+nx], 'Remainder': traj3[20*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'g'}
+        robots[3] = {"State": traj4[:nx], 'Ref': traj4[nx:20*nx+nx], 'Remainder': traj4[20*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'm'}
+        robots[4] = {"State": traj5[:nx], 'Ref': traj5[nx:20*nx+nx], 'Remainder': traj5[20*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'y'}
+        
+        predicted_states = {i: [0]*2 for i in range(5)}
+        avoid.run(robots, predicted_states)
+        avoid.mng.kill()
+
     
-    avoid.run(robots, predicted_states)
-    avoid.mng.kill()
     
     
 
