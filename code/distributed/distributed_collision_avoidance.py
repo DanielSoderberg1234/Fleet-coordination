@@ -42,7 +42,9 @@ class CollisionAvoidance:
 
         # Time 
         self.time = 0
+        self.time2 = 0
         self.time_vec = []
+        self.time_vec2 = []
 
 
     def control_action_to_trajectory(self,x,y,theta,u): 
@@ -213,8 +215,9 @@ class CollisionAvoidance:
         # Get predicted states for the other robot
         #TODO: This is prob were we should remove some of the predicted states, but 
         for i in predicted_states: 
-            if robot_id != i: 
-                p.extend(predicted_states[i][0:2])
+            if robot_id != i:
+                p.extend(predicted_states[i])
+
 
         return p
 
@@ -222,10 +225,11 @@ class CollisionAvoidance:
         
         u_p_old = [robots[robot_id]['Ref'][3:5] for robot_id in robots]
 
-        w = 0.5
+        w = 0.9
         pmax = 20
         epsilon = 0.01
 
+        t3 = perf_counter_ns()
         for i in range(0,pmax):
             K = 0
             for robot_id in robots: 
@@ -243,16 +247,16 @@ class CollisionAvoidance:
                 # Get the solver output 
                 ustar = solution['solution'] 
 
-                u_p = [w*ustar[i] + (1-w)*u_p_old[robot_id][i] for i in range(self.nu)]
+                u_p = [w*ustar[j] + (1-w)*u_p_old[robot_id][j] for j in range(self.nu)]
                 
-                K = max(K, max([u_p[i] - u_p_old[robot_id][i] for i in range(self.nu)]))
+                K = max(K, max([u_p[j] - u_p_old[robot_id][j] for j in range(self.nu)]))
                 
                 u_p_old[robot_id] = u_p
 
                 # Predict future state
                 x,y,theta = state[0], state[1],state[2]
 
-                states = self.predicted_states(x,y,theta,u_p)
+                states = self.predicted_states(x,y,theta,ustar)
             
                 predicted_states[robot_id] = states
 
@@ -260,7 +264,9 @@ class CollisionAvoidance:
 
             if K < epsilon:
                 break
-
+        t4 = perf_counter_ns()
+        self.time2 += (t4-t3)/10**6 
+        self.time_vec2.append((t4-t3)/10**6 )
 
     def run_one_iteration(self,robots,predicted_states,iteration_step): 
         self.distributed_algorithm(robots, predicted_states)
@@ -286,11 +292,20 @@ class CollisionAvoidance:
        
         plt.close()
 
+        plt.subplot(1,2,1)
         plt.plot(self.time_vec,'-o')
         plt.ylim(0,50)
         plt.title("Calculation Time")
         plt.xlabel("N")
         plt.ylabel('ms')
+
+        plt.subplot(1,2,2)
+        plt.plot(self.time_vec2,'-o')
+        plt.ylim(0,400)
+        plt.title("Calculation Time")
+        plt.xlabel("N")
+        plt.ylabel('ms')
+
         plt.show()
         
 
@@ -300,7 +315,7 @@ if __name__=="__main__":
     case_nr = 1
 
     if case_nr == 1:
-        r_model = RobotModelData(nr_of_robots=2, nx=5, q = 200, qtheta = 100000, qobs=1000, r=50, qN=200, qaccW=10, qaccV=50)
+        r_model = RobotModelData(nr_of_robots=2, nx=5, q = 100, qtheta = 10, qobs=10, r=20, qN=2000, qaccW=5, qaccV=5)
         avoid = CollisionAvoidance(r_model)
         traj1 = generate_straight_trajectory(x=-2,y=0,theta=0,v=1,ts=0.1,N=40) # Trajectory from x=-1, y=0 driving straight to the right
         traj2 = generate_straight_trajectory(x=0,y=-2,theta=cs.pi/2,v=1,ts=0.1,N=40) # Trajectory from x=0,y=-1 driving straight up
