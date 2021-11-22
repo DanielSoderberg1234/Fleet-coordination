@@ -106,7 +106,7 @@ class MPCGenerator:
         # Input vector 2 trajectories, N long with nx states in each i=0,1,2,..,N-1 and the 6 last are the weights
         ref = cs.SX.sym('p',nx*(N+1))
 
-        c = cs.SX.sym('c',N*2)
+        c = cs.SX.sym('c',2*(self.nr_of_robots-1)*N)
         #c = cs.SX.sym('c',2)
 
         Q = cs.SX.sym('Q',8)
@@ -133,8 +133,11 @@ class MPCGenerator:
         cost += self.cost_all_acceleration(u,qaccV,qaccW)
         
         avoid_col = True
-
-        for i,j,k in zip( range(0,nx*N,nx), range(0,nu*N,nu),range(0,2*N,2)): 
+        
+        flag = True
+        
+        # i: Timesteps, j: Robots, k: Pairs of robots
+        for i,j,k in zip( range(0,nx*N,nx), range(0,nu*N,nu), range(0,2*N,2)):
             # Get the data for the current steps
             refi = ref[i:i+nx]
             xref, yref, thetaref= refi[0], refi[1], refi[2]
@@ -147,22 +150,24 @@ class MPCGenerator:
             
             # Calculate the cost on all control actions
             cost += r*cs.dot(uref-uj,uref-uj)
+            #cost += r*(uref[0]-uj[0])**2 + 10*r*(uref[1]-uj[1])**2
             #cost += r*cs.dot(uj,uj)
 
             # Update the states
             x,y,theta = model(x,y,theta,uj,ts)
 
             # Avoid collisions
-            ck = c[k:k+2]
-            xc,yc = ck[0],ck[1]
-            cost += qobs*cs.fmax(0.0, 1.0 - (x-xc)**2 - (y-yc)**2)
+            #Only check first position in the other robots predicted traj.
             
-            #if avoid_col: 
-            #    xc, yc = c[0],c[1]
-            #    cost += qobs*cs.fmax(0.0, 1.0-(x-xc)**2-(y-yc)**2)
-            #    avoid_col = False
             
-
+            for r in range(self.nr_of_robots-1):
+                
+                ck = c[2*N*r + k : 2*N*r + k + 2]
+                xc,yc = ck[0],ck[1]
+                #cost += qobs*cs.fmax(0.0, 1.0 - (x-xc)**2 - (y-yc)**2)
+                #cost += qobs/10*cs.fmax(0.0, 2.0**2 - (x-xc)**2 - (y-yc)**2)
+                cost += qobs*cs.fmax(0.0, 1.0 - (x-xc)**2 - (y-yc)**2)
+                
 
         # Get the data for the last step
         refi = ref[nx*N:]
@@ -193,7 +198,7 @@ class MPCGenerator:
             .with_tcp_interface_config()
 
         meta = og.config.OptimizerMeta()\
-            .with_optimizer_name("distributed_solver")
+            .with_optimizer_name("distributed_solver_{}_robots".format(self.nr_of_robots))
 
         solver_config = og.config.SolverConfiguration()\
             .with_tolerance(1e-4)\
