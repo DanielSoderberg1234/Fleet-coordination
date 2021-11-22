@@ -69,15 +69,6 @@ class CollisionAvoidance:
         robot['State'] = [x,y,theta,robot['u'][0],robot['u'][1]]
 
     def update_ref(self,robot):
-        """
-        x,y = robot['State'][:2]
-        
-        while True: 
-            xc,yc = robot['Ref'][:2]
-
-            if cs.sqrt( (xc-x)**2 + (yc-y)**2 ) > 0.2 or ( robot['Ref'][0]==robot['Ref'][5] and robot['Ref'][1]==robot['Ref'][6]):
-                break  
-        """
         
         # Shift reference once step to the left
         robot['Ref'][:self.nx*(self.N-1)] = robot['Ref'][self.nx:]
@@ -151,7 +142,7 @@ class CollisionAvoidance:
             self.plot_for_one_robot(robots[robot_id], robot_id)
 
         # Plot objects 
-        for ob in obstacles['Static']: 
+        for ob in obstacles['Unpadded']: 
             self.plot_polygon(ob)
         self.plot_polygon(obstacles['Boundaries'][0])
         
@@ -231,7 +222,7 @@ class CollisionAvoidance:
         p.extend(self.weights)
 
         
-        for ob in obstacles['Static']: 
+        for ob in obstacles['Padded']: 
             eqs = self.polygon_to_eqs(ob)
             p.extend(eqs)
 
@@ -271,8 +262,11 @@ class CollisionAvoidance:
         plt.tight_layout(pad=3.0)
         
 
-        for i in range(0,80+1): 
+        for i in range(0,70+1): 
             self.run_one_iteration(robots,obstacles,iteration_step=i)
+            #if i == 20 or i == 50:
+            #    input("Wait")
+        
         plt.pause(2)
         print("Avg solvtime: ", self.time/41," ms")
         plt.close()
@@ -285,43 +279,63 @@ class CollisionAvoidance:
         plt.show()
         
 
-def square_polygon(xc,yc,width): 
+def unpadded_square(xc,yc,width): 
     return Polygon( [[xc-width/2, yc-width/2],[xc+width/2, yc-width/2],[xc+width/2, yc+width/2],[xc-width/2, yc+width/2] ])
+
+def padded_square(xc,yc,width, pad): 
+    pad = (pad+width/2)
+    return Polygon( [[xc-pad, yc-pad],[xc+pad, yc-pad],[xc+pad, yc+pad],[xc-pad, yc+pad] ])
+    
 
 if __name__=="__main__": 
 
-    
-    obstacles = {}
-    obstacles['Static'] =  [square_polygon(-1,-1,1), square_polygon(1,-1,1), square_polygon(1,1,1), square_polygon(-1,1,1), None ]
-    obstacles['Boundaries'] =  [Polygon([[-4, -4], [4, -4], [4, 4], [-4, 4]]) ]
-    
-    
-    
+    """
     # Case 1 - Crossing
-    r_model = RobotModelData(nr_of_robots=2, nx=5, qobs=200, r=50, qN=200, qaccW=20, qaccV=20, qpol=200, qbounds=200)
+    r_model = RobotModelData(nr_of_robots=2, nx=5, q=200, qobs=200, r=50, qN=200, qaccW=20, qaccV=50, qpol=200, qbounds=200)
     avoid = CollisionAvoidance(r_model)
-    traj1 = generate_straight_trajectory(x=-3.5,y=0,theta=0,v=1,ts=0.1,N=80) # Trajectory from x=-1, y=0 driving straight to the right
-    traj2 = generate_straight_trajectory(x=0,y=-3.5,theta=cs.pi/2,v=1,ts=0.1,N=80) # Trajectory from x=0,y=-1 driving straight up
+    traj1 = generate_straight_trajectory(x=-3.5,y=0,theta=0,v=1,ts=0.1,N=70) # Trajectory from x=-1, y=0 driving straight to the right
+    traj2 = generate_straight_trajectory(x=0,y=-3.5,theta=cs.pi/2,v=1,ts=0.1,N=70) # Trajectory from x=0,y=-1 driving straight up
     
     nx =5
     robots = {}
     robots[0] = {"State": traj1[:nx], 'Ref': traj1[nx:20*nx+nx], 'Remainder': traj1[20*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'r'}
     robots[1] = {"State": traj2[:nx], 'Ref': traj2[nx:20*nx+nx], 'Remainder': traj2[20*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b'}
     
+    #obstacles = {}
+    #obstacles['Unpadded'] =  [unpadded_square(-1,-1,1), unpadded_square(1,-1,1), unpadded_square(1,1,1), unpadded_square(-1,1,1), None]
+    #obstacles['Padded'] = [padded_square(-1,-1,1, 0.5), padded_square(1,-1,1, 0.5), padded_square(1,1,1, 0.5), padded_square(-1,1,1, 0.5), None]
+    #obstacles['Boundaries'] =  [Polygon([[-4, -4], [4, -4], [4, 4], [-4, 4]]) ]
+
+    obstacles = {}
+    obstacles['Unpadded'] =  [unpadded_square(-1,-1,1), unpadded_square(1,-1,1), unpadded_square(1,1,1), unpadded_square(-1,1,1), None]
+    obstacles['Padded'] = [None, None, None, None, None]
+    obstacles['Boundaries'] =  [Polygon([[-4, -4], [4, -4], [4, 4], [-4, 4]]) ]
+
     avoid.run(robots, obstacles)
     avoid.mng.kill()
     
-    """
+    
     # Case 2 - Towards eachother
-    r_model = RobotModelData(nr_of_robots=2, nx=5, qobs=200, r=50, qN=200, qaccW=10, qaccV=50)
+    r_model = RobotModelData(nr_of_robots=2, nx=5, qobs=2000, r=50, qN=200, qaccW=20, qaccV=20, qpol=2000, qbounds=2000)
     avoid = CollisionAvoidance(r_model)
     nx =5
-    traj1 = generate_straight_trajectory(x=-2,y=0,theta=0,v=1,ts=0.1,N=40) # Trajectory from x=-1, y=0 driving straight to the right
-    traj2 = generate_straight_trajectory(x=2,y=0,theta=-cs.pi,v=1,ts=0.1,N=40) # Trajectory from x=0,y=-1 driving straight up
+    traj1 = generate_straight_trajectory(x=-3,y=0,theta=0,v=1,ts=0.1,N=60) # Trajectory from x=-1, y=0 driving straight to the right
+    traj2 = generate_straight_trajectory(x=3,y=0,theta=-cs.pi,v=1,ts=0.1,N=60) # Trajectory from x=0,y=-1 driving straight up
     robots = {}
     robots[0] = {"State": traj1[:nx], 'Ref': traj1[nx:20*nx+nx], 'Remainder': traj1[20*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'r'}
     robots[1] = {"State": traj2[:nx], 'Ref': traj2[nx:20*nx+nx], 'Remainder': traj2[20*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b'}
-    avoid.run(robots)
+
+    #obstacles = {}
+    #obstacles['Unpadded'] =  [unpadded_square(0,-2,3), None, None, None, None]
+    #obstacles['Padded'] = [padded_square(0,-2,3, 0.5), None, None, None, None]
+    #obstacles['Boundaries'] =  [Polygon([[-4, -4], [4, -4], [4, 4], [-4, 4]]) ]
+
+    obstacles = {}
+    obstacles['Unpadded'] =  [unpadded_square(-1,-1,1), unpadded_square(1,-1,1), unpadded_square(1,1,1), unpadded_square(-1,1,1), None]
+    obstacles['Padded'] = [padded_square(-1,-1,1, 0.5), padded_square(1,-1,1, 0.5), padded_square(1,1,1, 0.5), padded_square(-1,1,1, 0.5), None]
+    obstacles['Boundaries'] =  [Polygon([[-4, -4], [4, -4], [4, 4], [-4, 4]]) ]
+
+    avoid.run(robots, obstacles)
     avoid.mng.kill()
     
     
@@ -334,19 +348,29 @@ if __name__=="__main__":
     robots = {}
     robots[0] = {"State": traj1[:nx], 'Ref': traj1[nx:20*nx+nx], 'Remainder': traj1[20*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'r'}
     robots[1] = {"State": traj2[:nx], 'Ref': traj2[nx:20*nx+nx], 'Remainder': traj2[20*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b'}
-    avoid.run(robots)
-    avoid.mng.kill()
+    obstacles = {}
+    obstacles['Unpadded'] =  [unpadded_square(0,-2,3), None, None, None, None]
+    obstacles['Padded'] = [padded_square(0,-2,3, 0.5), None, None, None, None]
+    obstacles['Boundaries'] =  [Polygon([[-4, -4], [4, -4], [4, 4], [-4, 4]]) ]
     
+    avoid.run(robots, obstacles)
+    avoid.mng.kill()
+    """
     
     # Case 4 - Multiple Robots
     N_steps = 60
-    r_model = RobotModelData(nr_of_robots=5, nx=5, q=200, qobs=200, r=50, qN=200, qaccW=50, qaccV=50)
+    r_model = RobotModelData(nr_of_robots=5, nx=5, qobs=200, r=50, qN=200, qaccW=50, qaccV=50)
     avoid = CollisionAvoidance(r_model)
     traj1 = generate_straight_trajectory(x=-4,y=0,theta=0,v=1,ts=0.1,N=N_steps) # Trajectory from x=-1, y=0 driving straight to the right
-    traj2 = generate_straight_trajectory(x=4,y=1,theta=-cs.pi,v=1,ts=0.1,N=N_steps) # Trajectory from x=0,y=-1 driving straight up
+    traj2 = generate_straight_trajectory(x=4,y=0,theta=-cs.pi,v=1,ts=0.1,N=N_steps) # Trajectory from x=0,y=-1 driving straight up
     traj3 = generate_straight_trajectory(x=1,y=-2,theta=cs.pi/2,v=1,ts=0.1,N=N_steps) # Trajectory from x=0,y=-1 driving straight up
     traj4 = generate_straight_trajectory(x=-1,y=-2,theta=cs.pi/2,v=1,ts=0.1,N=N_steps) # Trajectory from x=0,y=-1 driving straight up
     traj5 = generate_straight_trajectory(x=-4,y=2,theta=0,v=1,ts=0.1,N=N_steps) # Trajectory from x=-1, y=0 driving straight to the right
+
+    obstacles = {}
+    obstacles['Unpadded'] =  [unpadded_square(0,1,1), None, None, None, None]
+    obstacles['Padded'] = [padded_square(0,1,1, 0.5), None, None, None, None]
+    obstacles['Boundaries'] =  [Polygon([[-4, -4], [4, -4], [4, 4], [-4, 4]]) ]
     
     nx =5
     robots = {}
@@ -359,7 +383,7 @@ if __name__=="__main__":
     avoid.run(robots, obstacles)
     avoid.mng.kill()
     
-    
+    """
     # Case 5 - Multiple Robots
     N_steps = 100
     r_model = RobotModelData(nr_of_robots=10, nx=5, q = 10, qtheta=1, r=10, qN=10, qaccW=10, qaccV=20)

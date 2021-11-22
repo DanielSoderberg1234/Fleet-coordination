@@ -211,7 +211,7 @@ class MPCGenerator:
                 inside = 1
                 for j in range(0,12,3):
                     h = ob[j:j+3]
-                    inside *= cs.fmax(0.0, h[2] - h[1]*y - h[0]*x )
+                    inside *= cs.fmax(0.0, h[2] - h[1]*y - h[0]*x )**2
 
                 cost += qobs*inside
 
@@ -302,7 +302,7 @@ class MPCGenerator:
         cost += self.cost_deviation_ref(robots,nx*N,nu*N,qN,qthetaN)
 
         # Get the bounds for the control action
-        bounds = self.bound_control_action(vmin=0.0,vmax=1.5,wmin=-1,wmax=1,N=N)
+        bounds = self.bound_control_action(vmin=.0,vmax=1.5,wmin=-1,wmax=1,N=N)
         
         # Concate all parameters
         p = cs.vertcat(p,Q,o,b)
@@ -337,5 +337,5 @@ class MPCGenerator:
        
 
 if __name__=='__main__':
-    mpc = MPCGenerator(nr_of_robots=2)
+    mpc = MPCGenerator(nr_of_robots=5)
     mpc.build_mpc()
