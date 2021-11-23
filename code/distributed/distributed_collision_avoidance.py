@@ -45,6 +45,7 @@ class CollisionAvoidance:
         self.time2 = 0
         self.time_vec = []
         self.time_vec2 = []
+        self.time_vec3 = {0: [], 1: []}
 
 
     def control_action_to_trajectory(self,x,y,theta,u): 
@@ -227,6 +228,8 @@ class CollisionAvoidance:
         pmax = 20
         epsilon = 0.01
 
+        times = [0]*self.nr_of_robots
+
         t3 = perf_counter_ns()
         for i in range(0,pmax):
             K = 0
@@ -241,6 +244,8 @@ class CollisionAvoidance:
                 t2 = perf_counter_ns()
                 self.time += (t2-t1)/10**6 
                 self.time_vec.append((t2-t1)/10**6 )
+
+                times[robot_id] += (t2-t1)/10**6
 
                 # Get the solver output 
                 ustar = solution['solution'] 
@@ -265,6 +270,8 @@ class CollisionAvoidance:
         t4 = perf_counter_ns()
         self.time2 += (t4-t3)/10**6 
         self.time_vec2.append((t4-t3)/10**6 )
+        self.time_vec3[0].append(times[0])
+        self.time_vec3[1].append(times[1])
 
     def run_one_iteration(self,robots,predicted_states,iteration_step): 
         self.distributed_algorithm(robots, predicted_states)
@@ -290,17 +297,31 @@ class CollisionAvoidance:
        
         plt.close()
 
-        plt.subplot(1,2,1)
+        plt.subplot(2,2,1)
         plt.plot(self.time_vec,'-o')
         plt.ylim(0,50)
         plt.title("Calculation Time")
         plt.xlabel("N")
         plt.ylabel('ms')
 
-        plt.subplot(1,2,2)
+        plt.subplot(2,2,2)
         plt.plot(self.time_vec2,'-o')
         plt.ylim(0,400)
         plt.title("Calculation Time")
+        plt.xlabel("N")
+        plt.ylabel('ms')
+
+        plt.subplot(2,2,3)
+        plt.plot(self.time_vec3[0],'-o')
+        plt.ylim(0,400)
+        plt.title("Calculation Time Robot 1")
+        plt.xlabel("N")
+        plt.ylabel('ms')
+
+        plt.subplot(2,2,4)
+        plt.plot(self.time_vec3[1],'-o')
+        plt.ylim(0,400)
+        plt.title("Calculation Time Robot 2")
         plt.xlabel("N")
         plt.ylabel('ms')
 
