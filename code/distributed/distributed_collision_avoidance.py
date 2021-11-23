@@ -221,10 +221,11 @@ class CollisionAvoidance:
         return p
 
     def distributed_algorithm(self,robots,predicted_states):
-        
+        predicted_states_temp = predicted_states.copy()
+
         u_p_old = [robots[robot_id]['Ref'][3:5] for robot_id in robots]
 
-        w = 0.9
+        w = 0.8
         pmax = 20
         epsilon = 0.01
 
@@ -261,10 +262,10 @@ class CollisionAvoidance:
 
                 states = self.predicted_states(x,y,theta,ustar)
             
-                predicted_states[robot_id] = states
+                predicted_states_temp[robot_id] = states
 
                 robots[robot_id]['u'] = u_p
-
+            predicted_states = predicted_states_temp
             if K < epsilon:
                 break
         t4 = perf_counter_ns()
@@ -299,7 +300,7 @@ class CollisionAvoidance:
 
         plt.subplot(2,2,1)
         plt.plot(self.time_vec,'-o')
-        plt.ylim(0,50)
+        plt.ylim(0,75)
         plt.title("Calculation Time")
         plt.xlabel("N")
         plt.ylabel('ms')
