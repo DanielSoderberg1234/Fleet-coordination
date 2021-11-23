@@ -103,17 +103,18 @@ class MPCGenerator:
         # Some predefined values, should maybe be read from a config file?
         (nu, nx, N, ts) = (2, 5, 20, 0.1)
 
-        # Input vector 2 trajectories, N long with nx states in each i=0,1,2,..,N-1 and the 6 last are the weights
+        # Input vector 2 trajectories, N long with nx states in each i=0,1,2,..,N-1.
+        #reference trajectory for current robot.
         ref = cs.SX.sym('p',nx*(N+1))
-
-        c = cs.SX.sym('c',2*(self.nr_of_robots-1)*N)
-        #c = cs.SX.sym('c',2)
-
+        
+        #other robots trajecctories including x and y for N steps
+        c = cs.SX.sym('c',2*N*(self.nr_of_robots-1))
+        
+        # the 8 last are the weights
         Q = cs.SX.sym('Q',8)
 
-        # Optimization variables 2 robots each with nu control inputs for N steps
+        # Optimization variables, nu control inputs for N steps for one robot
         u = cs.SX.sym('u',nu*N)
-
 
         # Values to fill the dictionary
         x, y, theta = ref[0], ref[1], ref[2]

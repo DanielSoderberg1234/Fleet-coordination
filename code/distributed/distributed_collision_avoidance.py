@@ -213,11 +213,9 @@ class CollisionAvoidance:
         p.extend(self.weights)
 
         # Get predicted states for the other robot
-        #TODO: This is prob were we should remove some of the predicted states, but 
         for i in predicted_states: 
             if robot_id != i:
                 p.extend(predicted_states[i])
-
 
         return p
 
@@ -348,7 +346,7 @@ if __name__=="__main__":
         robots[3] = {"State": traj4[:nx], 'Ref': traj4[nx:20*nx+nx], 'Remainder': traj4[20*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'm'}
         robots[4] = {"State": traj5[:nx], 'Ref': traj5[nx:20*nx+nx], 'Remainder': traj5[20*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'y'}
         
-        predicted_states = {i: [0]*2 for i in range(5)}
+        predicted_states = {i: [0]*20*2 for i in range(5)}
         avoid.run(robots, predicted_states)
         avoid.mng.kill()
 
