@@ -45,6 +45,7 @@ class CollisionAvoidance:
         self.time2 = 0
         self.time_vec = []
         self.time_vec2 = []
+        self.time_vec3 = {0: [], 1: []}
 
 
     def control_action_to_trajectory(self,x,y,theta,u): 
@@ -213,21 +214,22 @@ class CollisionAvoidance:
         p.extend(self.weights)
 
         # Get predicted states for the other robot
-        #TODO: This is prob were we should remove some of the predicted states, but 
         for i in predicted_states: 
             if robot_id != i:
                 p.extend(predicted_states[i])
 
-
         return p
 
     def distributed_algorithm(self,robots,predicted_states):
-        
+        predicted_states_temp = predicted_states.copy()
+
         u_p_old = [robots[robot_id]['Ref'][3:5] for robot_id in robots]
 
-        w = 0.9
+        w = 0.8
         pmax = 20
         epsilon = 0.01
+
+        times = [0]*self.nr_of_robots
 
         t3 = perf_counter_ns()
         for i in range(0,pmax):
@@ -244,6 +246,8 @@ class CollisionAvoidance:
                 self.time += (t2-t1)/10**6 
                 self.time_vec.append((t2-t1)/10**6 )
 
+                times[robot_id] += (t2-t1)/10**6
+
                 # Get the solver output 
                 ustar = solution['solution'] 
 
@@ -258,15 +262,17 @@ class CollisionAvoidance:
 
                 states = self.predicted_states(x,y,theta,ustar)
             
-                predicted_states[robot_id] = states
+                predicted_states_temp[robot_id] = states
 
                 robots[robot_id]['u'] = u_p
-
+            predicted_states = predicted_states_temp
             if K < epsilon:
                 break
         t4 = perf_counter_ns()
         self.time2 += (t4-t3)/10**6 
         self.time_vec2.append((t4-t3)/10**6 )
+        self.time_vec3[0].append(times[0])
+        self.time_vec3[1].append(times[1])
 
     def run_one_iteration(self,robots,predicted_states,iteration_step): 
         self.distributed_algorithm(robots, predicted_states)
@@ -292,17 +298,31 @@ class CollisionAvoidance:
        
         plt.close()
 
-        plt.subplot(1,2,1)
+        plt.subplot(2,2,1)
         plt.plot(self.time_vec,'-o')
-        plt.ylim(0,50)
+        plt.ylim(0,75)
         plt.title("Calculation Time")
         plt.xlabel("N")
         plt.ylabel('ms')
 
-        plt.subplot(1,2,2)
+        plt.subplot(2,2,2)
         plt.plot(self.time_vec2,'-o')
         plt.ylim(0,400)
         plt.title("Calculation Time")
+        plt.xlabel("N")
+        plt.ylabel('ms')
+
+        plt.subplot(2,2,3)
+        plt.plot(self.time_vec3[0],'-o')
+        plt.ylim(0,400)
+        plt.title("Calculation Time Robot 1")
+        plt.xlabel("N")
+        plt.ylabel('ms')
+
+        plt.subplot(2,2,4)
+        plt.plot(self.time_vec3[1],'-o')
+        plt.ylim(0,400)
+        plt.title("Calculation Time Robot 2")
         plt.xlabel("N")
         plt.ylabel('ms')
 
@@ -348,7 +368,7 @@ if __name__=="__main__":
         robots[3] = {"State": traj4[:nx], 'Ref': traj4[nx:20*nx+nx], 'Remainder': traj4[20*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'm'}
         robots[4] = {"State": traj5[:nx], 'Ref': traj5[nx:20*nx+nx], 'Remainder': traj5[20*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'y'}
         
-        predicted_states = {i: [0]*2 for i in range(5)}
+        predicted_states = {i: [0]*20*2 for i in range(5)}
         avoid.run(robots, predicted_states)
         avoid.mng.kill()
 
