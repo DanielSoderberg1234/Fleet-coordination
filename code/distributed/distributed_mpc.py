@@ -147,8 +147,8 @@ class MPCGenerator:
             uj = u[j:j+nu]
 
             # Calculate the cost of all robots deviating from their reference
-            #cost += self.cost_state_ref(x,y,theta,xref,yref,thetaref,q,qtheta)
-            cost += q*self.cost_lines(ref,x,y,N)
+            cost += self.cost_state_ref(x,y,theta,xref,yref,thetaref,q,qtheta)
+            #cost += q*self.cost_lines(ref,x,y,N)
             
             # Calculate the cost on all control actions
             cost += r*cs.dot(uref-uj,uref-uj)
