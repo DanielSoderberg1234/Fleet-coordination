@@ -227,9 +227,9 @@ class CollisionAvoidance:
         for robot_id in robots: 
             [u_p_old[robot_id].extend(robots[robot_id]['Ref'][self.nx*i+3:self.nx*(i+1)]) for i in range(self.N)]
 
-        w = 0.5
-        pmax = 25
-        epsilon = 0.01
+        w = 0.9
+        pmax = 10
+        epsilon = 0.1
 
         times = [0]*self.nr_of_robots
         t3 = perf_counter_ns()
@@ -271,6 +271,7 @@ class CollisionAvoidance:
                 robots[robot_id]['u'] = u_p[0:2]
             predicted_states.update(predicted_states_temp)
             if K < epsilon:
+                print(i)
                 break
         t4 = perf_counter_ns()
         self.time2 += (t4-t3)/10**6 
@@ -296,7 +297,7 @@ class CollisionAvoidance:
         plt.tight_layout(pad=3.0)
         
 
-        for i in range(0,40+1): 
+        for i in range(0,60+1): 
             self.run_one_iteration(robots,predicted_states,iteration_step=i)
         plt.pause(2)
        
@@ -336,13 +337,13 @@ class CollisionAvoidance:
 if __name__=="__main__": 
     
     
-    case_nr = 1
+    case_nr = 4
 
     if case_nr == 1:
-        r_model = RobotModelData(nr_of_robots=2, nx=5, q = 100, qtheta = 10, qobs=500, r=20, qN=200, qaccW=5, qaccV=5)
+        r_model = RobotModelData(nr_of_robots=2, nx=5, q = 10, qtheta = 100, qobs=500, r=20, qN=200, qaccW=5, qaccV=20)
         avoid = CollisionAvoidance(r_model)
-        traj1 = generate_straight_trajectory(x=-2.1,y=0,theta=0,v=1,ts=0.1,N=60) # Trajectory from x=-1, y=0 driving straight to the right
-        traj2 = generate_straight_trajectory(x=0,y=-2,theta=cs.pi/2,v=1,ts=0.1,N=60) # Trajectory from x=0,y=-1 driving straight up
+        traj1 = generate_straight_trajectory(x=-3,y=0,theta=0,v=1,ts=0.1,N=80) # Trajectory from x=-1, y=0 driving straight to the right
+        traj2 = generate_straight_trajectory(x=0,y=-3,theta=cs.pi/2,v=1,ts=0.1,N=80) # Trajectory from x=0,y=-1 driving straight up
 
         nx =5
         robots = {}
