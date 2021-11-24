@@ -337,13 +337,15 @@ class CollisionAvoidance:
 if __name__=="__main__": 
     
     
-    case_nr = 4
-
+    case_nr = 3
+    
+    N_steps = 80
+    r_model = RobotModelData(nx=5, q = 50, qtheta = 100, qobs=1000, r=20, qN=200, qaccW=5, qaccV=20)
     if case_nr == 1:
-        r_model = RobotModelData(nr_of_robots=2, nx=5, q = 10, qtheta = 100, qobs=500, r=20, qN=200, qaccW=5, qaccV=20)
+        r_model.nr_of_robots=2
         avoid = CollisionAvoidance(r_model)
-        traj1 = generate_straight_trajectory(x=-3,y=0,theta=0,v=1,ts=0.1,N=80) # Trajectory from x=-1, y=0 driving straight to the right
-        traj2 = generate_straight_trajectory(x=0,y=-3,theta=cs.pi/2,v=1,ts=0.1,N=80) # Trajectory from x=0,y=-1 driving straight up
+        traj1 = generate_straight_trajectory(x=-3,y=0,theta=0,v=1,ts=0.1,N=N_steps) # Trajectory from x=-1, y=0 driving straight to the right
+        traj2 = generate_straight_trajectory(x=0,y=-3,theta=cs.pi/2,v=1,ts=0.1,N=N_steps) # Trajectory from x=0,y=-1 driving straight up
 
         nx =5
         robots = {}
@@ -355,10 +357,10 @@ if __name__=="__main__":
     
 
     if case_nr == 2:
-        r_model = RobotModelData(nr_of_robots=2, nx=5, q = 100, qtheta = 10, qobs=1000, r=200, qN=2, qaccW=5, qaccV=5)
+        r_model.nr_of_robots=2
         avoid = CollisionAvoidance(r_model)
-        traj1 = generate_straight_trajectory(x=-2,y=0,theta=0,v=1,ts=0.1,N=60) # Trajectory from x=-1, y=0 driving straight to the right
-        traj2 = generate_straight_trajectory(x=2,y=1,theta=-cs.pi,v=1,ts=0.1,N=60) # Trajectory from x=0,y=-1 driving straight up
+        traj1 = generate_straight_trajectory(x=-3,y=0,theta=0,v=1,ts=0.1,N=N_steps) # Trajectory from x=-1, y=0 driving straight to the right
+        traj2 = generate_straight_trajectory(x=3,y=0,theta=-cs.pi,v=1,ts=0.1,N=N_steps) # Trajectory from x=0,y=-1 driving straight up
 
         nx =5
         robots = {}
@@ -367,15 +369,33 @@ if __name__=="__main__":
         predicted_states = {0: [0]*20*2, 1: [0]*20*2}
         avoid.run(robots, predicted_states)
         avoid.mng.kill()
+
+
+    if case_nr == 3:
+         # Case 3 - Behind eachother
+        r_model.nr_of_robots=2
+        avoid = CollisionAvoidance(r_model)
+        traj1 = generate_straight_trajectory(x=-2,y=0,theta=0,v=0.8,ts=0.1,N=N_steps) # Trajectory from x=-1, y=0 driving straight to the right
+        traj2 = generate_straight_trajectory(x=-4,y=0,theta=0,v=1.3,ts=0.1,N=N_steps) # Trajectory from x=0,y=-1 driving straight up
+        
+        nx = 5
+        robots = {}
+        robots[0] = {"State": traj1[:nx], 'Ref': traj1[nx:20*nx+nx], 'Remainder': traj1[20*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'r'}
+        robots[1] = {"State": traj2[:nx], 'Ref': traj2[nx:20*nx+nx], 'Remainder': traj2[20*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b'}
+        predicted_states = {0: [0]*20*2, 1: [0]*20*2}
+        avoid.run(robots, predicted_states)
+        avoid.mng.kill()
+    
+
+
     
 
     if case_nr == 4:
         # Case 4 - Multiple Robots
-        N_steps = 60
-        r_model = RobotModelData(nr_of_robots=5, nx=5, q=200, qobs=2000, r=50, qN=200, qaccW=50, qaccV=50)
+        r_model.nr_of_robots=5
         avoid = CollisionAvoidance(r_model)
         traj1 = generate_straight_trajectory(x=-4,y=0,theta=0,v=1,ts=0.1,N=N_steps) # Trajectory from x=-1, y=0 driving straight to the right
-        traj2 = generate_straight_trajectory(x=4,y=1,theta=-cs.pi,v=1,ts=0.1,N=N_steps) # Trajectory from x=0,y=-1 driving straight up
+        traj2 = generate_straight_trajectory(x=4,y=0,theta=-cs.pi,v=1,ts=0.1,N=N_steps) # Trajectory from x=0,y=-1 driving straight up
         traj3 = generate_straight_trajectory(x=1,y=-2,theta=cs.pi/2,v=1,ts=0.1,N=N_steps) # Trajectory from x=0,y=-1 driving straight up
         traj4 = generate_straight_trajectory(x=-1,y=-2,theta=cs.pi/2,v=1,ts=0.1,N=N_steps) # Trajectory from x=0,y=-1 driving straight up
         traj5 = generate_straight_trajectory(x=-4,y=2,theta=0,v=1,ts=0.1,N=N_steps) # Trajectory from x=-1, y=0 driving straight to the right
