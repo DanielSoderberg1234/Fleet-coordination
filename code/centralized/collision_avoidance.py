@@ -268,7 +268,7 @@ class CollisionAvoidance:
             #    input("Wait")
         
         plt.pause(2)
-        print("Avg solvtime: ", self.time/41," ms")
+        print("Avg solvtime: ", self.time/71," ms")
         plt.close()
 
         plt.plot(self.time_vec,'-o')
@@ -359,18 +359,18 @@ if __name__=="__main__":
     
     # Case 4 - Multiple Robots
     N_steps = 60
-    r_model = RobotModelData(nr_of_robots=5, nx=5, qobs=200, r=50, qN=200, qaccW=50, qaccV=50)
+    r_model = RobotModelData(nr_of_robots=5, nx=5, qobs=200, r=50, qN=200, qaccW=50, qaccV=50, q=200)
     avoid = CollisionAvoidance(r_model)
     traj1 = generate_straight_trajectory(x=-4,y=0,theta=0,v=1,ts=0.1,N=N_steps) # Trajectory from x=-1, y=0 driving straight to the right
-    traj2 = generate_straight_trajectory(x=4,y=0,theta=-cs.pi,v=1,ts=0.1,N=N_steps) # Trajectory from x=0,y=-1 driving straight up
+    traj2 = generate_straight_trajectory(x=4,y=1,theta=-cs.pi,v=1,ts=0.1,N=N_steps) # Trajectory from x=0,y=-1 driving straight up
     traj3 = generate_straight_trajectory(x=1,y=-2,theta=cs.pi/2,v=1,ts=0.1,N=N_steps) # Trajectory from x=0,y=-1 driving straight up
     traj4 = generate_straight_trajectory(x=-1,y=-2,theta=cs.pi/2,v=1,ts=0.1,N=N_steps) # Trajectory from x=0,y=-1 driving straight up
     traj5 = generate_straight_trajectory(x=-4,y=2,theta=0,v=1,ts=0.1,N=N_steps) # Trajectory from x=-1, y=0 driving straight to the right
 
     obstacles = {}
-    obstacles['Unpadded'] =  [unpadded_square(0,1,1), None, None, None, None]
-    obstacles['Padded'] = [padded_square(0,1,1, 0.5), None, None, None, None]
-    obstacles['Boundaries'] =  [Polygon([[-4, -4], [4, -4], [4, 4], [-4, 4]]) ]
+    obstacles['Unpadded'] =  [None, None, None, None, None]
+    obstacles['Padded'] = [None, None, None, None, None]
+    obstacles['Boundaries'] =  [Polygon([[-4.5, -4.5], [4.5, -4.5], [4.5, 4.5], [-4.5, 4.5]]) ]
     
     nx =5
     robots = {}

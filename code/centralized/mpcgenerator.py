@@ -124,7 +124,7 @@ class MPCGenerator:
 
     def cost_robot2robot_dist(self,x1,y1,x2,y2,qobs): 
         # Cost for being closer than r to the other robot
-        return qobs*cs.fmax(0.0, 1.0**2 - (x1-x2)**2 - (y1-y2)**2)
+        return qobs*cs.fmax(0.0, 1.0**2 - (x1-x2)**2 - (y1-y2)**2)**2
 
     def cost_collision(self,robots, qobs):
         cost = 0 
@@ -282,8 +282,8 @@ class MPCGenerator:
 
         for i,j in zip( range(0,nx*N,nx), range(0,nu*N,nu)): 
             # Calculate the cost of all robots deviating from their reference
-            cost += self.cost_deviation_ref(robots,i,j,q,qtheta)
-            #cost += self.cost_line(robots,q)
+            #cost += self.cost_deviation_ref(robots,i,j,q,qtheta)
+            cost += self.cost_line(robots,q)
             # Calculate the cost on all control actions
             cost += self.cost_all_control_action(robots,i,j,r)
             # Update the states
