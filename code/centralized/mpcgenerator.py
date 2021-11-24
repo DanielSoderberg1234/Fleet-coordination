@@ -282,8 +282,8 @@ class MPCGenerator:
 
         for i,j in zip( range(0,nx*N,nx), range(0,nu*N,nu)): 
             # Calculate the cost of all robots deviating from their reference
-            #cost += self.cost_deviation_ref(robots,i,j,q,qtheta)
-            cost += self.cost_line(robots,q)
+            cost += self.cost_deviation_ref(robots,i,j,q,qtheta)
+            #cost += self.cost_line(robots,q)
             # Calculate the cost on all control actions
             cost += self.cost_all_control_action(robots,i,j,r)
             # Update the states
@@ -337,5 +337,5 @@ class MPCGenerator:
        
 
 if __name__=='__main__':
-    mpc = MPCGenerator(nr_of_robots=5)
+    mpc = MPCGenerator(nr_of_robots=10)
     mpc.build_mpc()
