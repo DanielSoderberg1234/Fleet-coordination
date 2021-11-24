@@ -68,10 +68,7 @@ class MPCGenerator:
         return cs.mmin(dist_vec[:])
 
     def cost_acceleration(self,u0,u1,qaccV,qaccW): 
-        cost = 0
-        cost += qaccV*(u1[0]-u0[0])**2
-        cost += qaccW*(u1[1]-u0[1])**2
-        return cost
+        return qaccV*(u1[0]-u0[0])**2 + qaccW*(u1[1]-u0[1])**2
         
 
     def cost_all_acceleration(self,u,qaccV,qaccW): 
@@ -97,6 +94,10 @@ class MPCGenerator:
         umin = [vmin,wmin]*N
         umax = [vmax,wmax]*N
         return og.constraints.Rectangle(umin, umax)
+    
+    def cost_robot2robot_dist(self,x1,y1,x2,y2,qobs): 
+        # Cost for being closer than r to the other robot
+        return qobs*cs.fmax(0.0, 1.0**2 - (x1-x2)**2 - (y1-y2)**2)**2
 
     def generate_mpc_formulation(self): 
 
@@ -137,8 +138,8 @@ class MPCGenerator:
         
         flag = True
         
-        # i: Timesteps, j: Robots, k: Pairs of robots
-        for i,j,k in zip( range(0,nx*N,nx), range(0,nu*N,nu), range(0,2*N,2)):
+        # i: Timesteps, j: control signal index, k: coordinate index
+        for i,j,k in zip( range(0,nx*N,nx), range(0,nu*N,nu), range(0,nu*N,2)):
             # Get the data for the current steps
             refi = ref[i:i+nx]
             xref, yref, thetaref= refi[0], refi[1], refi[2]
@@ -159,16 +160,16 @@ class MPCGenerator:
 
             # Avoid collisions
             #Only check first position in the other robots predicted traj.
-            
-            
+                        
+            #cost for dist to all other robots
             for r in range(self.nr_of_robots-1):
-                
+                #2 = nr_of_coord (x,y),                 
                 ck = c[2*N*r + k : 2*N*r + k + 2]
                 xc,yc = ck[0],ck[1]
                 #cost += qobs*cs.fmax(0.0, 1.0 - (x-xc)**2 - (y-yc)**2)
                 #cost += qobs/10*cs.fmax(0.0, 2.0**2 - (x-xc)**2 - (y-yc)**2)
-                cost += qobs*cs.fmax(0.0, 1.0 - (x-xc)**2 - (y-yc)**2)
-                
+                #cost += qobs*cs.fmax(0.0, 1.0 - (x-xc)**2 - (y-yc)**2)
+                cost += self.cost_robot2robot_dist(x,y,xc,yc,qobs)
 
         # Get the data for the last step
         refi = ref[nx*N:]

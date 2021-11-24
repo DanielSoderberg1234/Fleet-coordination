@@ -224,13 +224,13 @@ class CollisionAvoidance:
         predicted_states_temp = predicted_states.copy()
 
         u_p_old = [robots[robot_id]['Ref'][3:5] for robot_id in robots]
-
-        w = 0.8
-        pmax = 20
+        #guess that the best is 1m/s and no turn
+        initial_guess=[1.0,0.0] * (self.N)
+        w = 0.9
+        pmax = 12
         epsilon = 0.01
 
         times = [0]*self.nr_of_robots
-
         t3 = perf_counter_ns()
         for i in range(0,pmax):
             K = 0
@@ -241,7 +241,7 @@ class CollisionAvoidance:
 
                 # Call the solver
                 t1 = perf_counter_ns()
-                solution = self.mng.call(p=mpc_input, initial_guess=[1.0] * (self.nu*self.N))
+                solution = self.mng.call(p=mpc_input, initial_guess=initial_guess)
                 t2 = perf_counter_ns()
                 self.time += (t2-t1)/10**6 
                 self.time_vec.append((t2-t1)/10**6 )
@@ -261,11 +261,11 @@ class CollisionAvoidance:
                 x,y,theta = state[0], state[1],state[2]
 
                 states = self.predicted_states(x,y,theta,ustar)
-            
+
                 predicted_states_temp[robot_id] = states
 
                 robots[robot_id]['u'] = u_p
-            predicted_states = predicted_states_temp
+            predicted_states.update(predicted_states_temp)
             if K < epsilon:
                 break
         t4 = perf_counter_ns()
@@ -335,10 +335,25 @@ if __name__=="__main__":
     case_nr = 1
 
     if case_nr == 1:
-        r_model = RobotModelData(nr_of_robots=2, nx=5, q = 100, qtheta = 10, qobs=10, r=20, qN=2000, qaccW=5, qaccV=5)
+        r_model = RobotModelData(nr_of_robots=2, nx=5, q = 100, qtheta = 10, qobs=100, r=20, qN=2000, qaccW=5, qaccV=5)
         avoid = CollisionAvoidance(r_model)
         traj1 = generate_straight_trajectory(x=-2,y=0,theta=0,v=1,ts=0.1,N=40) # Trajectory from x=-1, y=0 driving straight to the right
         traj2 = generate_straight_trajectory(x=0,y=-2,theta=cs.pi/2,v=1,ts=0.1,N=40) # Trajectory from x=0,y=-1 driving straight up
+
+        nx =5
+        robots = {}
+        robots[0] = {"State": traj1[:nx], 'Ref': traj1[nx:20*nx+nx], 'Remainder': traj1[20*nx+nx:], 'u': [0,0], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'r'}
+        robots[1] = {"State": traj2[:nx], 'Ref': traj2[nx:20*nx+nx], 'Remainder': traj2[20*nx+nx:], 'u': [0,0], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b'}
+        predicted_states = {0: [0]*20*2, 1: [0]*20*2}
+        avoid.run(robots, predicted_states)
+        avoid.mng.kill()
+    
+
+    if case_nr == 2:
+        r_model = RobotModelData(nr_of_robots=2, nx=5, q = 100, qtheta = 10, qobs=1000, r=200, qN=2, qaccW=5, qaccV=5)
+        avoid = CollisionAvoidance(r_model)
+        traj1 = generate_straight_trajectory(x=-2,y=0,theta=0,v=1,ts=0.1,N=40) # Trajectory from x=-1, y=0 driving straight to the right
+        traj2 = generate_straight_trajectory(x=-2,y=2,theta=0,v=1,ts=0.1,N=40) # Trajectory from x=0,y=-1 driving straight up
 
         nx =5
         robots = {}
