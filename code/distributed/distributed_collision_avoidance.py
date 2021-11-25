@@ -120,11 +120,12 @@ class CollisionAvoidance:
         r=1.0
         plt.plot(x+r*np.cos(ang), y+r*np.sin(ang),'-',color='k')
 
-    def plot_for_one_robot(self,robot, robot_id):
+    def plot_for_one_robot(self,robot, robot_id,predicted_states):
         x,y,theta,v,w = robot['State']
 
         # Calculate all fute x and y states
-        x_pred, y_pred = self.control_action_to_trajectory(x,y,theta,robot['u'])
+        #x_pred, y_pred = self.control_action_to_trajectory(x,y,theta,robot['u'])
+        x_pred, y_pred = predicted_states[0::2],predicted_states[1::2]
 
         # Save the states that we have been to
         robot['Past_x'].append(x)
@@ -145,11 +146,11 @@ class CollisionAvoidance:
         self.plot_robot(x,y,theta)
         #self.plot_safety_cricles(x,y)
 
-    def plot_map(self,robots): 
+    def plot_map(self,robots,predicted_states): 
         plt.subplot(1,2,1)
         plt.cla()
         for robot_id in robots: 
-            self.plot_for_one_robot(robots[robot_id], robot_id)
+            self.plot_for_one_robot(robots[robot_id], robot_id, predicted_states[robot_id])
         plt.xlim(-5,5)
         plt.ylim(-5,5)
         plt.xlabel("x [m]")
@@ -220,20 +221,29 @@ class CollisionAvoidance:
 
         return p
 
+    #select the ref control signals for all robots 
+    def get_control_signals_from_ref(self, robots):
+        #might be slow
+        u_p = {i: [] for i in range(len(robots))}
+        for robot_id in robots: 
+            [u_p[robot_id].extend(robots[robot_id]['Ref'][self.nx*i+3:self.nx*(i+1)]) for i in range(self.N)]
+        return u_p
+
+
     def distributed_algorithm(self,robots,predicted_states):
         predicted_states_temp = predicted_states.copy()
 
-        u_p_old = {i: [] for i in range(len(robots))}
-        for robot_id in robots: 
-            [u_p_old[robot_id].extend(robots[robot_id]['Ref'][self.nx*i+3:self.nx*(i+1)]) for i in range(self.N)]
+        #Update the old control signals to last iterations signals
+        u_p_old = self.get_control_signals_from_ref(robots)
 
+        #get from json/yaml file?
         w = 0.9
-        pmax = 10
-        epsilon = 0.1
+        pmax = 50
+        epsilon = 0.01
 
         times = [0]*self.nr_of_robots
         t3 = perf_counter_ns()
-        for i in range(0,pmax):
+        for i in range(pmax):
             K = 0
             for robot_id in robots: 
                 state = robots[robot_id]['State']
@@ -251,11 +261,12 @@ class CollisionAvoidance:
 
                 # Get the solver output 
                 ustar = solution['solution'] 
-
+                #modify the output to not be to far from the previous
                 u_p = [w*ustar[j] + (1-w)*u_p_old[robot_id][j] for j in range(self.N*self.nu)]
                 
-                K = max(K, max([u_p[j] - u_p_old[robot_id][j] for j in range(self.N*self.nu)]))
+                K = max(K, max([abs(u_p[j] - u_p_old[robot_id][j]) for j in range(self.N*self.nu)]))
                 
+                #to be used in next it
                 u_p_old[robot_id] = u_p
 
                 # Predict future state
@@ -271,8 +282,8 @@ class CollisionAvoidance:
                 robots[robot_id]['u'] = u_p[0:2]
             predicted_states.update(predicted_states_temp)
             if K < epsilon:
-                print(i)
                 break
+        print(i)
         t4 = perf_counter_ns()
         self.time2 += (t4-t3)/10**6 
         self.time_vec2.append((t4-t3)/10**6 )
@@ -286,7 +297,7 @@ class CollisionAvoidance:
             self.update_state(robots[robot_id])
             self.update_ref(robots[robot_id])
 
-        self.plot_map(robots)
+        self.plot_map(robots,predicted_states)
         self.plot_dist(robots, iteration_step)
         self.plot_vel(robots, iteration_step)
         plt.pause(0.001)
@@ -337,11 +348,14 @@ class CollisionAvoidance:
 if __name__=="__main__": 
     
     
-    case_nr = 3
-    
+    case_nr = 1
     N_steps = 80
-    r_model = RobotModelData(nx=5, q = 50, qtheta = 100, qobs=1000, r=20, qN=200, qaccW=5, qaccV=20)
+    #r_model = RobotModelData(nx=5, q = 50, qtheta = 100, qobs=1000, r=20, qN=200, qaccW=5, qaccV=20) # use pmax=10,eps = 0.1
+    #r_model = RobotModelData(nx=5, q = 5, qtheta = 10, qobs=200, r=2, qN=200, qaccW=.5, qaccV=15) # use pmax=50,eps = 0.01 
+    r_model = RobotModelData(nx=5, q = 5, qtheta = 10, qobs=200, r=2, qN=200, qaccW=.5, qaccV=15) #
+    
     if case_nr == 1:
+        #intersection 2 robots
         r_model.nr_of_robots=2
         avoid = CollisionAvoidance(r_model)
         traj1 = generate_straight_trajectory(x=-3,y=0,theta=0,v=1,ts=0.1,N=N_steps) # Trajectory from x=-1, y=0 driving straight to the right
@@ -357,6 +371,7 @@ if __name__=="__main__":
     
 
     if case_nr == 2:
+        #collition, head on,  2 robots
         r_model.nr_of_robots=2
         avoid = CollisionAvoidance(r_model)
         traj1 = generate_straight_trajectory(x=-3,y=0,theta=0,v=1,ts=0.1,N=N_steps) # Trajectory from x=-1, y=0 driving straight to the right
@@ -372,7 +387,7 @@ if __name__=="__main__":
 
 
     if case_nr == 3:
-         # Case 3 - Behind eachother
+        # Case 3 - Behind eachother
         r_model.nr_of_robots=2
         avoid = CollisionAvoidance(r_model)
         traj1 = generate_straight_trajectory(x=-2,y=0,theta=0,v=0.8,ts=0.1,N=N_steps) # Trajectory from x=-1, y=0 driving straight to the right
@@ -385,13 +400,11 @@ if __name__=="__main__":
         predicted_states = {0: [0]*20*2, 1: [0]*20*2}
         avoid.run(robots, predicted_states)
         avoid.mng.kill()
-    
-
 
     
 
     if case_nr == 4:
-        # Case 4 - Multiple Robots
+        # Case 4 - Multiple Robots mix
         r_model.nr_of_robots=5
         avoid = CollisionAvoidance(r_model)
         traj1 = generate_straight_trajectory(x=-4,y=0,theta=0,v=1,ts=0.1,N=N_steps) # Trajectory from x=-1, y=0 driving straight to the right
