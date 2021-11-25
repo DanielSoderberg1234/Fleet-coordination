@@ -29,7 +29,7 @@ class CollisionAvoidance:
         self.N = r_model.N 
         self.ts = r_model.ts 
         self.weights = r_model.get_weights()
-
+        self.ustar  = {i: [] for i in range(r_model.nr_of_robots)}
 
         # Create the solver and open a tcp port to it 
         self.mng = og.tcp.OptimizerTcpManager("distributed1/distributed_solver_{}_robots".format(self.nr_of_robots))
@@ -230,6 +230,12 @@ class CollisionAvoidance:
         return u_p
 
 
+    def shift_left_and_append_last(self,dikt):   
+        # Shift reference once step to the left
+        for i in range(len(dikt)):
+            dikt[i].extend(dikt[i][-self.nu:]) 
+            dikt[i] = dikt[i][self.nu:]
+
     def distributed_algorithm(self,robots,predicted_states):
         predicted_states_temp = predicted_states.copy()
 
@@ -237,9 +243,14 @@ class CollisionAvoidance:
         u_p_old = self.get_control_signals_from_ref(robots)
 
         #get from json/yaml file?
-        w = 0.9
-        pmax = 50
-        epsilon = 0.01
+        w = 1 # .5
+        pmax = 1 
+        epsilon = 0.1
+        if len(self.ustar[0])<1:
+            self.ustar = u_p_old.copy()
+
+        self.shift_left_and_append_last(self.ustar)
+        
 
         times = [0]*self.nr_of_robots
         t3 = perf_counter_ns()
@@ -252,7 +263,9 @@ class CollisionAvoidance:
 
                 # Call the solver
                 t1 = perf_counter_ns()
-                solution = self.mng.call(p=mpc_input, initial_guess=u_p_old[robot_id])
+                #solution = self.mng.call(p=mpc_input, initial_guess=u_p_old[robot_id])
+                #use ustar - prev best solution as init guess
+                solution = self.mng.call(p=mpc_input, initial_guess=self.ustar[robot_id])
                 t2 = perf_counter_ns()
                 self.time += (t2-t1)/10**6 
                 self.time_vec.append((t2-t1)/10**6 )
@@ -260,9 +273,9 @@ class CollisionAvoidance:
                 times[robot_id] += (t2-t1)/10**6
 
                 # Get the solver output 
-                ustar = solution['solution'] 
+                self.ustar[robot_id] = solution['solution'] 
                 #modify the output to not be to far from the previous
-                u_p = [w*ustar[j] + (1-w)*u_p_old[robot_id][j] for j in range(self.N*self.nu)]
+                u_p = [w*self.ustar[robot_id][j] + (1-w)*u_p_old[robot_id][j] for j in range(self.N*self.nu)]
                 
                 K = max(K, max([abs(u_p[j] - u_p_old[robot_id][j]) for j in range(self.N*self.nu)]))
                 
@@ -272,7 +285,7 @@ class CollisionAvoidance:
                 # Predict future state
                 x,y,theta = state[0], state[1],state[2]
                 #print(ustar[0])
-                ustar[0:2] = u_p
+                #ustar[robot_id][0:2] = u_p
                 states = self.predicted_states(x,y,theta,u_p)
 
                 predicted_states_temp[robot_id] = states
@@ -311,7 +324,9 @@ class CollisionAvoidance:
         for i in range(0,60+1): 
             self.run_one_iteration(robots,predicted_states,iteration_step=i)
         plt.pause(2)
-       
+        print('avg solve time: ',sum(self.time_vec)/len(self.time_vec))
+        print('avg solve time rob0: ',sum(self.time_vec3[0])/len(self.time_vec3[0]))
+        print('avg solve time rob2: ',sum(self.time_vec3[1])/len(self.time_vec3[1]))
         plt.close()
 
         plt.subplot(2,2,1)
@@ -330,14 +345,14 @@ class CollisionAvoidance:
 
         plt.subplot(2,2,3)
         plt.plot(self.time_vec3[0],'-o')
-        plt.ylim(0,400)
+        plt.ylim(0,75)
         plt.title("Calculation Time Robot 1")
         plt.xlabel("N")
         plt.ylabel('ms')
 
         plt.subplot(2,2,4)
         plt.plot(self.time_vec3[1],'-o')
-        plt.ylim(0,400)
+        plt.ylim(0,75)
         plt.title("Calculation Time Robot 2")
         plt.xlabel("N")
         plt.ylabel('ms')
@@ -348,12 +363,13 @@ class CollisionAvoidance:
 if __name__=="__main__": 
     
     
-    case_nr = 1
+    case_nr = 4
     N_steps = 80
     #r_model = RobotModelData(nx=5, q = 50, qtheta = 100, qobs=1000, r=20, qN=200, qaccW=5, qaccV=20) # use pmax=10,eps = 0.1
     #r_model = RobotModelData(nx=5, q = 5, qtheta = 10, qobs=200, r=2, qN=200, qaccW=.5, qaccV=15) # use pmax=50,eps = 0.01 
-    r_model = RobotModelData(nx=5, q = 5, qtheta = 10, qobs=200, r=2, qN=200, qaccW=.5, qaccV=15) #
-    
+    #r_model = RobotModelData(nx=5, q = 5, qtheta = 10, qobs=200, r=2, qN=200, qaccW=.5, qaccV=15) #pmax=1,w=1, eps = 0.01 
+    r_model = RobotModelData(nx=5, q = 5, qtheta = 10, qobs=200, r=2, qN=200, qaccW=.5, qaccV=15) #pmax= ,w= , eps=  
+
     if case_nr == 1:
         #intersection 2 robots
         r_model.nr_of_robots=2
@@ -407,11 +423,11 @@ if __name__=="__main__":
         # Case 4 - Multiple Robots mix
         r_model.nr_of_robots=5
         avoid = CollisionAvoidance(r_model)
-        traj1 = generate_straight_trajectory(x=-4,y=0,theta=0,v=1,ts=0.1,N=N_steps) # Trajectory from x=-1, y=0 driving straight to the right
-        traj2 = generate_straight_trajectory(x=4,y=0,theta=-cs.pi,v=1,ts=0.1,N=N_steps) # Trajectory from x=0,y=-1 driving straight up
-        traj3 = generate_straight_trajectory(x=1,y=-2,theta=cs.pi/2,v=1,ts=0.1,N=N_steps) # Trajectory from x=0,y=-1 driving straight up
-        traj4 = generate_straight_trajectory(x=-1,y=-2,theta=cs.pi/2,v=1,ts=0.1,N=N_steps) # Trajectory from x=0,y=-1 driving straight up
-        traj5 = generate_straight_trajectory(x=-4,y=2,theta=0,v=1,ts=0.1,N=N_steps) # Trajectory from x=-1, y=0 driving straight to the right
+        traj1 = generate_straight_trajectory(x=-4,y=0,theta=0,v=1,ts=0.1,N=N_steps) # Trajectory from x=-4, y=0 driving straight to the right
+        traj2 = generate_straight_trajectory(x=4,y=0.1,theta=-cs.pi,v=1,ts=0.1,N=N_steps) # Trajectory from x=4,y=0 driving straight to the left
+        traj3 = generate_straight_trajectory(x=1,y=-2,theta=cs.pi/2,v=1,ts=0.1,N=N_steps) # Trajectory from x=1,y=-2 driving straight up
+        traj4 = generate_straight_trajectory(x=-1,y=-2,theta=cs.pi/2,v=1,ts=0.1,N=N_steps) # Trajectory from x=-1,y=-2 driving straight up
+        traj5 = generate_straight_trajectory(x=-4,y=2,theta=0,v=1,ts=0.1,N=N_steps) # Trajectory from x=-, y=2 driving straight to the right
    
         nx =5
         robots = {}

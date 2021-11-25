@@ -139,7 +139,7 @@ class MPCGenerator:
         flag = True
         
         # i: Timesteps, j: control signal index, k: coordinate index
-        for i,j,k in zip( range(0,nx*N,nx), range(0,nu*N,nu), range(0,nu*N,2)):
+        for i,j,k in zip( range(0,nx*N,nx), range(0,nu*N,nu), range(0,2*N,2)):
             # Get the data for the current steps
             refi = ref[i:i+nx]
             xref, yref, thetaref= refi[0], refi[1], refi[2]
@@ -160,16 +160,15 @@ class MPCGenerator:
 
             # Avoid collisions
             #Only check first position in the other robots predicted traj.
-                        
+
+            #prediction horizon in the other robots to acount for not a good solution maid test simple   
+            if k < 100*2:
             #cost for dist to all other robots
-            for r in range(self.nr_of_robots-1):
-                #2 = nr_of_coord (x,y),                 
-                ck = c[2*N*r + k : 2*N*r + k + 2]
-                xc,yc = ck[0],ck[1]
-                #cost += qobs*cs.fmax(0.0, 1.0 - (x-xc)**2 - (y-yc)**2)
-                #cost += qobs/10*cs.fmax(0.0, 2.0**2 - (x-xc)**2 - (y-yc)**2)
-                #cost += qobs*cs.fmax(0.0, 1.0 - (x-xc)**2 - (y-yc)**2)
-                cost += self.cost_robot2robot_dist(x,y,xc,yc,qobs)
+                for r in range(self.nr_of_robots-1):
+                    #2 = nr_of_coord (x,y),                 
+                    ck = c[2*N*r + k : 2*N*r + k + 2]
+                    xc,yc = ck[0],ck[1]
+                    cost += self.cost_robot2robot_dist(x,y,xc,yc,qobs)
 
         # Get the data for the last step
         refi = ref[nx*N:]
@@ -215,5 +214,5 @@ class MPCGenerator:
        
 
 if __name__=='__main__':
-    mpc = MPCGenerator(nr_of_robots=2)
+    mpc = MPCGenerator(nr_of_robots=5)
     mpc.build_mpc()
