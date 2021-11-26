@@ -71,9 +71,8 @@ class MPCGenerator:
         return qaccV*(u1[0]-u0[0])**2 + qaccW*(u1[1]-u0[1])**2
         
 
-    def cost_all_acceleration(self,u,qaccV,qaccW): 
+    def cost_all_acceleration(self,u,qaccV,qaccW,N): 
         nu = 2
-        N = 20
         cost = 0
 
         u0 = u[:-nu]
@@ -97,7 +96,7 @@ class MPCGenerator:
     
     def cost_robot2robot_dist(self,x1,y1,x2,y2,qobs): 
         # Cost for being closer than r to the other robot
-        return qobs*cs.fmax(0.0, 1.0**2 - (x1-x2)**2 - (y1-y2)**2)**2
+        return qobs*cs.fmax(0.0, 1**2 - (x1-x2)**2 - (y1-y2)**2)**2
 
     def generate_mpc_formulation(self): 
 
@@ -132,7 +131,7 @@ class MPCGenerator:
         cost += self.cost_inital_acceleration(u,uref, qaccV, qaccW)
 
         # Cost for all acceleration 
-        cost += self.cost_all_acceleration(u,qaccV,qaccW)
+        cost += self.cost_all_acceleration(u,qaccV,qaccW,N)
         
         avoid_col = True
         
@@ -162,13 +161,13 @@ class MPCGenerator:
             #Only check first position in the other robots predicted traj.
 
             #prediction horizon in the other robots to acount for not a good solution maid test simple   
-            if k < 100*2:
+            #if k < 100*2:
             #cost for dist to all other robots
-                for r in range(self.nr_of_robots-1):
-                    #2 = nr_of_coord (x,y),                 
-                    ck = c[2*N*r + k : 2*N*r + k + 2]
-                    xc,yc = ck[0],ck[1]
-                    cost += self.cost_robot2robot_dist(x,y,xc,yc,qobs)
+            for other_robot_nr in range(self.nr_of_robots-1):
+                #2 = nr_of_coord (x,y),                 
+                ck = c[2*N*other_robot_nr + k : 2*N*other_robot_nr + k + 2]
+                xc,yc = ck[0],ck[1]
+                cost += self.cost_robot2robot_dist(x,y,xc,yc,qobs)
 
         # Get the data for the last step
         refi = ref[nx*N:]
