@@ -243,9 +243,9 @@ class CollisionAvoidance:
         u_p_old = self.get_control_signals_from_ref(robots)
 
         #get from json/yaml file?
-        w = 1 # .5
-        pmax = 1 
-        epsilon = 0.1
+        w = .75 # .5
+        pmax = 10
+        epsilon = .01
         if len(self.ustar[0])<1:
             self.ustar = u_p_old.copy()
 
@@ -286,13 +286,15 @@ class CollisionAvoidance:
                 x,y,theta = state[0], state[1],state[2]
                 #print(ustar[0])
                 #ustar[robot_id][0:2] = u_p
-                states = self.predicted_states(x,y,theta,u_p)
+                #states = self.predicted_states(x,y,theta,u_p)
+                states = self.predicted_states(x,y,theta,self.ustar[robot_id])
 
                 predicted_states_temp[robot_id] = states
 
                 #predicted_states[robot_id] = states
 
-                robots[robot_id]['u'] = u_p[0:2]
+                #robots[robot_id]['u'] = u_p[0:2]
+                robots[robot_id]['u'] = self.ustar[robot_id]
             predicted_states.update(predicted_states_temp)
             if K < epsilon:
                 break
@@ -331,28 +333,28 @@ class CollisionAvoidance:
 
         plt.subplot(2,2,1)
         plt.plot(self.time_vec,'-o')
-        plt.ylim(0,75)
+        plt.ylim(0,40)
         plt.title("Calculation Time")
         plt.xlabel("N")
         plt.ylabel('ms')
 
         plt.subplot(2,2,2)
         plt.plot(self.time_vec2,'-o')
-        plt.ylim(0,400)
+        plt.ylim(0,70)
         plt.title("Calculation Time")
         plt.xlabel("N")
         plt.ylabel('ms')
 
         plt.subplot(2,2,3)
         plt.plot(self.time_vec3[0],'-o')
-        plt.ylim(0,75)
+        plt.ylim(0,40)
         plt.title("Calculation Time Robot 1")
         plt.xlabel("N")
         plt.ylabel('ms')
 
         plt.subplot(2,2,4)
         plt.plot(self.time_vec3[1],'-o')
-        plt.ylim(0,75)
+        plt.ylim(0,40)
         plt.title("Calculation Time Robot 2")
         plt.xlabel("N")
         plt.ylabel('ms')
@@ -363,12 +365,12 @@ class CollisionAvoidance:
 if __name__=="__main__": 
     
     
-    case_nr = 4
+    case_nr = 1
     N_steps = 80
     #r_model = RobotModelData(nx=5, q = 50, qtheta = 100, qobs=1000, r=20, qN=200, qaccW=5, qaccV=20) # use pmax=10,eps = 0.1
     #r_model = RobotModelData(nx=5, q = 5, qtheta = 10, qobs=200, r=2, qN=200, qaccW=.5, qaccV=15) # use pmax=50,eps = 0.01 
-    #r_model = RobotModelData(nx=5, q = 5, qtheta = 10, qobs=200, r=2, qN=200, qaccW=.5, qaccV=15) #pmax=1,w=1, eps = 0.01 
-    r_model = RobotModelData(nx=5, q = 5, qtheta = 10, qobs=200, r=2, qN=200, qaccW=.5, qaccV=15) #pmax= ,w= , eps=  
+    #r_model = RobotModelData(nx=5, q = 5, qtheta = 10, qobs=200, r=20, qN=200, qaccW=.5, qaccV=15) #pmax=1,w=1, eps = 0.01 
+    r_model = RobotModelData(nx=5, q = 5, qtheta = 10, qobs=400, r=130, qN=40, qaccW=5, qthetaN = 200, qaccV=15, N=20) #pmax= ,w= , eps=  
 
     if case_nr == 1:
         #intersection 2 robots
@@ -379,9 +381,9 @@ if __name__=="__main__":
 
         nx =5
         robots = {}
-        robots[0] = {"State": traj1[:nx], 'Ref': traj1[nx:20*nx+nx], 'Remainder': traj1[20*nx+nx:], 'u': [0,0], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'r'}
-        robots[1] = {"State": traj2[:nx], 'Ref': traj2[nx:20*nx+nx], 'Remainder': traj2[20*nx+nx:], 'u': [0,0], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b'}
-        predicted_states = {0: [0]*20*2, 1: [0]*20*2}
+        robots[0] = {"State": traj1[:nx], 'Ref': traj1[nx:r_model.N*nx+nx], 'Remainder': traj1[r_model.N*nx+nx:], 'u': [0,0], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'r'}
+        robots[1] = {"State": traj2[:nx], 'Ref': traj2[nx:r_model.N*nx+nx], 'Remainder': traj2[r_model.N*nx+nx:], 'u': [0,0], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b'}
+        predicted_states = {0: [0]*r_model.N*2, 1: [0]*r_model.N*2}
         avoid.run(robots, predicted_states)
         avoid.mng.kill()
     
@@ -395,9 +397,9 @@ if __name__=="__main__":
 
         nx =5
         robots = {}
-        robots[0] = {"State": traj1[:nx], 'Ref': traj1[nx:20*nx+nx], 'Remainder': traj1[20*nx+nx:], 'u': [0,0], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'r'}
-        robots[1] = {"State": traj2[:nx], 'Ref': traj2[nx:20*nx+nx], 'Remainder': traj2[20*nx+nx:], 'u': [0,0], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b'}
-        predicted_states = {0: [0]*20*2, 1: [0]*20*2}
+        robots[0] = {"State": traj1[:nx], 'Ref': traj1[nx:r_model.N*nx+nx], 'Remainder': traj1[r_model.N*nx+nx:], 'u': [0,0], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'r'}
+        robots[1] = {"State": traj2[:nx], 'Ref': traj2[nx:r_model.N*nx+nx], 'Remainder': traj2[r_model.N*nx+nx:], 'u': [0,0], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b'}
+        predicted_states = {0: [0]*r_model.N*2, 1: [0]*r_model.N*2}
         avoid.run(robots, predicted_states)
         avoid.mng.kill()
 
@@ -411,9 +413,9 @@ if __name__=="__main__":
         
         nx = 5
         robots = {}
-        robots[0] = {"State": traj1[:nx], 'Ref': traj1[nx:20*nx+nx], 'Remainder': traj1[20*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'r'}
-        robots[1] = {"State": traj2[:nx], 'Ref': traj2[nx:20*nx+nx], 'Remainder': traj2[20*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b'}
-        predicted_states = {0: [0]*20*2, 1: [0]*20*2}
+        robots[0] = {"State": traj1[:nx], 'Ref': traj1[nx:r_model.N*nx+nx], 'Remainder': traj1[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'r'}
+        robots[1] = {"State": traj2[:nx], 'Ref': traj2[nx:r_model.N*nx+nx], 'Remainder': traj2[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b'}
+        predicted_states = {0: [0]*r_model.N*2, 1: [0]*r_model.N*2}
         avoid.run(robots, predicted_states)
         avoid.mng.kill()
 
@@ -431,13 +433,13 @@ if __name__=="__main__":
    
         nx =5
         robots = {}
-        robots[0] = {"State": traj1[:nx], 'Ref': traj1[nx:20*nx+nx], 'Remainder': traj1[20*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'r'}
-        robots[1] = {"State": traj2[:nx], 'Ref': traj2[nx:20*nx+nx], 'Remainder': traj2[20*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b'}
-        robots[2] = {"State": traj3[:nx], 'Ref': traj3[nx:20*nx+nx], 'Remainder': traj3[20*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'g'}
-        robots[3] = {"State": traj4[:nx], 'Ref': traj4[nx:20*nx+nx], 'Remainder': traj4[20*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'm'}
-        robots[4] = {"State": traj5[:nx], 'Ref': traj5[nx:20*nx+nx], 'Remainder': traj5[20*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'y'}
+        robots[0] = {"State": traj1[:nx], 'Ref': traj1[nx:r_model.N*nx+nx], 'Remainder': traj1[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'r'}
+        robots[1] = {"State": traj2[:nx], 'Ref': traj2[nx:r_model.N*nx+nx], 'Remainder': traj2[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b'}
+        robots[2] = {"State": traj3[:nx], 'Ref': traj3[nx:r_model.N*nx+nx], 'Remainder': traj3[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'g'}
+        robots[3] = {"State": traj4[:nx], 'Ref': traj4[nx:r_model.N*nx+nx], 'Remainder': traj4[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'm'}
+        robots[4] = {"State": traj5[:nx], 'Ref': traj5[nx:r_model.N*nx+nx], 'Remainder': traj5[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'y'}
         
-        predicted_states = {i: [0]*20*2 for i in range(5)}
+        predicted_states = {i: [0]*r_model.N*2 for i in range(5)}
         avoid.run(robots, predicted_states)
         avoid.mng.kill()
 
