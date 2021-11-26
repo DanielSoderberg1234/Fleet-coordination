@@ -16,6 +16,12 @@ class MPCGenerator:
         # Cost for deviating from the current reference
         return q*( (xref-x)**2 + (yref-y)**2 ) + qtheta*(thetaref-theta)**2
 
+
+    def cost_turn_left(self,theta,thetaref,qtheta): 
+        # Cost for deviating from the current reference only 
+        return qtheta*100*cs.fmax(0, -(thetaref-theta))**2
+
+
     def cost_lines(self,ref,x,y,N):
         """
         Calculations according to: 
@@ -146,8 +152,9 @@ class MPCGenerator:
             uj = u[j:j+nu]
 
             # Calculate the cost of all robots deviating from their reference
-            cost += self.cost_state_ref(x,y,theta,xref,yref,thetaref,q,qtheta)
-            #cost += q*self.cost_lines(ref,x,y,N)
+            #cost += self.cost_state_ref(x,y,theta,xref,yref,thetaref,q,qtheta)
+            cost += q*self.cost_lines(ref,x,y,N)
+            cost += self.cost_turn_left(theta,thetaref,qtheta)
             
             # Calculate the cost on all control actions
             cost += r*cs.dot(uref-uj,uref-uj)
@@ -213,5 +220,5 @@ class MPCGenerator:
        
 
 if __name__=='__main__':
-    mpc = MPCGenerator(nr_of_robots=5)
+    mpc = MPCGenerator(nr_of_robots=2)
     mpc.build_mpc()
