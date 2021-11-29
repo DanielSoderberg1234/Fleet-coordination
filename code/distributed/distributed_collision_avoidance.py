@@ -244,7 +244,7 @@ class CollisionAvoidance:
 
         #get from json/yaml file?
         w = .65 # 
-        pmax = 5
+        pmax = 1
         epsilon = .01
         if len(self.ustar[0])<1:
             self.ustar = u_p_old.copy()
@@ -257,44 +257,51 @@ class CollisionAvoidance:
         for i in range(pmax):
             K = 0
             for robot_id in robots: 
-                state = robots[robot_id]['State']
-                ref = robots[robot_id]['Ref']
-                mpc_input = self.get_input(state,ref, predicted_states, robot_id)
+                if not robots[robot_id]['dyn_obj']:
+                    state = robots[robot_id]['State']
+                    ref = robots[robot_id]['Ref']
+                    mpc_input = self.get_input(state,ref, predicted_states, robot_id)
 
-                # Call the solver
-                t1 = perf_counter_ns()
-                #solution = self.mng.call(p=mpc_input, initial_guess=u_p_old[robot_id])
-                #use ustar - prev best solution as init guess
-                solution = self.mng.call(p=mpc_input, initial_guess=self.ustar[robot_id])
-                t2 = perf_counter_ns()
-                self.time += (t2-t1)/10**6 
-                self.time_vec.append((t2-t1)/10**6 )
+                    # Call the solver
+                    t1 = perf_counter_ns()
+                    #solution = self.mng.call(p=mpc_input, initial_guess=u_p_old[robot_id])
+                    #use ustar - prev best solution as init guess
+                    solution = self.mng.call(p=mpc_input, initial_guess=self.ustar[robot_id])
+                    t2 = perf_counter_ns()
+                    self.time += (t2-t1)/10**6 
+                    self.time_vec.append((t2-t1)/10**6 )
 
-                times[robot_id] += (t2-t1)/10**6
+                    times[robot_id] += (t2-t1)/10**6
 
-                # Get the solver output 
-                self.ustar[robot_id] = solution['solution'] 
-                #modify the output to not be to far from the previous
-                u_p = [w*self.ustar[robot_id][j] + (1-w)*u_p_old[robot_id][j] for j in range(self.N*self.nu)]
-                
-                K = max(K, max([abs(u_p[j] - u_p_old[robot_id][j]) for j in range(self.N*self.nu)]))
-                
-                #to be used in next it
-                u_p_old[robot_id] = u_p
+                    # Get the solver output 
+                    self.ustar[robot_id] = solution['solution'] 
+                    #modify the output to not be to far from the previous
+                    u_p = [w*self.ustar[robot_id][j] + (1-w)*u_p_old[robot_id][j] for j in range(self.N*self.nu)]
+                    
+                    K = max(K, max([abs(u_p[j] - u_p_old[robot_id][j]) for j in range(self.N*self.nu)]))
+                    
+                    #to be used in next it
+                    u_p_old[robot_id] = u_p
 
-                # Predict future state
-                x,y,theta = state[0], state[1],state[2]
-                #print(ustar[0])
-                #ustar[robot_id][0:2] = u_p
-                #states = self.predicted_states(x,y,theta,u_p)
+                    # Predict future state
+                    x,y,theta = state[0], state[1],state[2]
+                    #print(ustar[0])
+                    #ustar[robot_id][0:2] = u_p
+                    #states = self.predicted_states(x,y,theta,u_p)
+
+                else:
+                    ustar = {0:[]} 
+                    [ustar[0].extend(robots[robot_id]['Ref'][self.nx*i+3:self.nx*(i+1)]) for i in range(self.N)]
+                    self.ustar[robot_id] = ustar[0]
+                    x,y,theta = robots[robot_id]['Ref'][0:3]
                 states = self.predicted_states(x,y,theta,self.ustar[robot_id])
-
+                
                 predicted_states_temp[robot_id] = states
-
-                #predicted_states[robot_id] = states
 
                 #robots[robot_id]['u'] = u_p[0:2]
                 robots[robot_id]['u'] = self.ustar[robot_id]
+
+                #predicted_states[robot_id] = states
             predicted_states.update(predicted_states_temp)
             if K < epsilon:
                 break
@@ -323,7 +330,7 @@ class CollisionAvoidance:
         plt.tight_layout(pad=3.0)
         
 
-        for i in range(60+1): 
+        for i in range(80+1): 
             self.run_one_iteration(robots,predicted_states,iteration_step=i)
         plt.pause(2)
         print('avg solve time: ',sum(self.time_vec)/len(self.time_vec))
@@ -365,8 +372,8 @@ class CollisionAvoidance:
 if __name__=="__main__": 
     
     
-    case_nr = 1
-    N_steps = 80
+    case_nr = 6
+    N_steps = 180
     #r_model = RobotModelData(nx=5, q = 5, qtheta = 10, qobs=400, r=20, qN=200, qaccW=5, qthetaN = 200, qaccV=15, N=20) # w = .75, pmax = 10, epsilon = .01 ref
     r_model = RobotModelData(nx=5, q =250, qtheta = 10, qobs=400, r=30, qN=150, qaccW=.5, qthetaN = 20, qaccV=15, N=20) # w = .75, pmax = 5, epsilon = .01 line
     #r_model = RobotModelData(nx=5, q = 50, qtheta = 2, qobs=8000, r=30, qN=550, qaccW=5, qthetaN = 20, qaccV=15, N=20) # under development for better performance
@@ -380,8 +387,8 @@ if __name__=="__main__":
 
         nx =5
         robots = {}
-        robots[0] = {"State": traj1[:nx], 'Ref': traj1[nx:r_model.N*nx+nx], 'Remainder': traj1[r_model.N*nx+nx:], 'u': [0,0], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'r'}
-        robots[1] = {"State": traj2[:nx], 'Ref': traj2[nx:r_model.N*nx+nx], 'Remainder': traj2[r_model.N*nx+nx:], 'u': [0,0], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b'}
+        robots[0] = {"State": traj1[:nx], 'Ref': traj1[nx:r_model.N*nx+nx], 'Remainder': traj1[r_model.N*nx+nx:], 'u': [0,0], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'r','dyn_obj':True}
+        robots[1] = {"State": traj2[:nx], 'Ref': traj2[nx:r_model.N*nx+nx], 'Remainder': traj2[r_model.N*nx+nx:], 'u': [0,0], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b','dyn_obj':False}
         
     
 
@@ -394,8 +401,8 @@ if __name__=="__main__":
 
         nx =5
         robots = {}
-        robots[0] = {"State": traj1[:nx], 'Ref': traj1[nx:r_model.N*nx+nx], 'Remainder': traj1[r_model.N*nx+nx:], 'u': [0,0], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'r'}
-        robots[1] = {"State": traj2[:nx], 'Ref': traj2[nx:r_model.N*nx+nx], 'Remainder': traj2[r_model.N*nx+nx:], 'u': [0,0], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b'}
+        robots[0] = {"State": traj1[:nx], 'Ref': traj1[nx:r_model.N*nx+nx], 'Remainder': traj1[r_model.N*nx+nx:], 'u': [0,0], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'r','dyn_obj':False}
+        robots[1] = {"State": traj2[:nx], 'Ref': traj2[nx:r_model.N*nx+nx], 'Remainder': traj2[r_model.N*nx+nx:], 'u': [0,0], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b','dyn_obj':False}
         
 
 
@@ -408,8 +415,8 @@ if __name__=="__main__":
         
         nx = 5
         robots = {}
-        robots[0] = {"State": traj1[:nx], 'Ref': traj1[nx:r_model.N*nx+nx], 'Remainder': traj1[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'r'}
-        robots[1] = {"State": traj2[:nx], 'Ref': traj2[nx:r_model.N*nx+nx], 'Remainder': traj2[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b'}
+        robots[0] = {"State": traj1[:nx], 'Ref': traj1[nx:r_model.N*nx+nx], 'Remainder': traj1[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'r','dyn_obj':False}
+        robots[1] = {"State": traj2[:nx], 'Ref': traj2[nx:r_model.N*nx+nx], 'Remainder': traj2[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b','dyn_obj':False}
         
 
     
@@ -426,11 +433,11 @@ if __name__=="__main__":
    
         nx =5
         robots = {}
-        robots[0] = {"State": traj1[:nx], 'Ref': traj1[nx:r_model.N*nx+nx], 'Remainder': traj1[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'r'}
-        robots[1] = {"State": traj2[:nx], 'Ref': traj2[nx:r_model.N*nx+nx], 'Remainder': traj2[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b'}
-        robots[2] = {"State": traj3[:nx], 'Ref': traj3[nx:r_model.N*nx+nx], 'Remainder': traj3[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'g'}
-        robots[3] = {"State": traj4[:nx], 'Ref': traj4[nx:r_model.N*nx+nx], 'Remainder': traj4[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'm'}
-        robots[4] = {"State": traj5[:nx], 'Ref': traj5[nx:r_model.N*nx+nx], 'Remainder': traj5[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'y'}
+        robots[0] = {"State": traj1[:nx], 'Ref': traj1[nx:r_model.N*nx+nx], 'Remainder': traj1[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'r','dyn_obj':False}
+        robots[1] = {"State": traj2[:nx], 'Ref': traj2[nx:r_model.N*nx+nx], 'Remainder': traj2[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b','dyn_obj':False}
+        robots[2] = {"State": traj3[:nx], 'Ref': traj3[nx:r_model.N*nx+nx], 'Remainder': traj3[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'g','dyn_obj':False}
+        robots[3] = {"State": traj4[:nx], 'Ref': traj4[nx:r_model.N*nx+nx], 'Remainder': traj4[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'm','dyn_obj':False}
+        robots[4] = {"State": traj5[:nx], 'Ref': traj5[nx:r_model.N*nx+nx], 'Remainder': traj5[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'y','dyn_obj':False}
         
 
     if case_nr == 5:
@@ -443,16 +450,16 @@ if __name__=="__main__":
 
         nx =5
         robots = {}
-        robots[0] = {"State": traj1[:nx], 'Ref': traj1[nx:r_model.N*nx+nx], 'Remainder': traj1[r_model.N*nx+nx:], 'u': [0,0], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'r'}
-        robots[1] = {"State": traj2[:nx], 'Ref': traj2[nx:r_model.N*nx+nx], 'Remainder': traj2[r_model.N*nx+nx:], 'u': [0,0], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b'}
+        robots[0] = {"State": traj1[:nx], 'Ref': traj1[nx:r_model.N*nx+nx], 'Remainder': traj1[r_model.N*nx+nx:], 'u': [0,0], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'r','dyn_obj':False}
+        robots[1] = {"State": traj2[:nx], 'Ref': traj2[nx:r_model.N*nx+nx], 'Remainder': traj2[r_model.N*nx+nx:], 'u': [0,0], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b','dyn_obj':False}
         for i in range(len(extra_traj)):
-            robots[i+2] = {"State": extra_traj[i][:nx], 'Ref': extra_traj[i][nx:r_model.N*nx+nx], 'Remainder': extra_traj[i][r_model.N*nx+nx:], 'u': [0,0], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'm'}
+            robots[i+2] = {"State": extra_traj[i][:nx], 'Ref': extra_traj[i][nx:r_model.N*nx+nx], 'Remainder': extra_traj[i][r_model.N*nx+nx:], 'u': [0,0], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'm','dyn_obj':False}
         
     
     
     if case_nr == 6:
     # Case 6 - Multiple Robots
-        r_model.nr_of_robots=10
+        r_model.nr_of_robots=11
         avoid = CollisionAvoidance(r_model)
         traj1 = generate_straight_trajectory(x=-3,y=4,theta=3*cs.pi/2,v=1,ts=0.1,N=N_steps)
         traj2 = generate_straight_trajectory(x=0,y=4,theta=3*cs.pi/2,v=1,ts=0.1,N=N_steps) 
@@ -464,19 +471,21 @@ if __name__=="__main__":
         traj8 = generate_straight_trajectory(x=-5,y=2,theta=0,v=1,ts=0.1,N=N_steps)
         traj9 = generate_straight_trajectory(x=-4,y=0,theta=0,v=1,ts=0.1,N=N_steps)
         traj10 = generate_straight_trajectory(x=-4,y=-3,theta=0,v=1,ts=0.1,N=N_steps)
+        traj_dyn = generate_straight_trajectory(x=-3,y=-3,theta=cs.pi/4,v=1.4,ts=0.1,N=N_steps)
 
         nx =5
         robots = {}
-        robots[0] = {"State": traj1[:nx], 'Ref': traj1[nx:r_model.N*nx+nx], 'Remainder': traj1[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'r'}
-        robots[1] = {"State": traj2[:nx], 'Ref': traj2[nx:r_model.N*nx+nx], 'Remainder': traj2[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'r'}
-        robots[2] = {"State": traj3[:nx], 'Ref': traj3[nx:r_model.N*nx+nx], 'Remainder': traj3[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'r'}
-        robots[3] = {"State": traj4[:nx], 'Ref': traj4[nx:r_model.N*nx+nx], 'Remainder': traj4[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b'}
-        robots[4] = {"State": traj5[:nx], 'Ref': traj5[nx:r_model.N*nx+nx], 'Remainder': traj5[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b'}
-        robots[5] = {"State": traj6[:nx], 'Ref': traj6[nx:r_model.N*nx+nx], 'Remainder': traj6[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'm'}
-        robots[6] = {"State": traj7[:nx], 'Ref': traj7[nx:r_model.N*nx+nx], 'Remainder': traj7[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'm'}
-        robots[7] = {"State": traj8[:nx], 'Ref': traj8[nx:r_model.N*nx+nx], 'Remainder': traj8[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'g'}
-        robots[8] = {"State": traj9[:nx], 'Ref': traj9[nx:r_model.N*nx+nx], 'Remainder': traj9[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'g'}
-        robots[9] = {"State": traj10[:nx], 'Ref': traj10[nx:r_model.N*nx+nx], 'Remainder': traj10[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'g'}
+        robots[0] = {"State": traj1[:nx], 'Ref': traj1[nx:r_model.N*nx+nx], 'Remainder': traj1[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'r','dyn_obj':False}
+        robots[1] = {"State": traj2[:nx], 'Ref': traj2[nx:r_model.N*nx+nx], 'Remainder': traj2[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'r','dyn_obj':False}
+        robots[2] = {"State": traj3[:nx], 'Ref': traj3[nx:r_model.N*nx+nx], 'Remainder': traj3[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'r','dyn_obj':False}
+        robots[3] = {"State": traj4[:nx], 'Ref': traj4[nx:r_model.N*nx+nx], 'Remainder': traj4[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b','dyn_obj':False}
+        robots[4] = {"State": traj5[:nx], 'Ref': traj5[nx:r_model.N*nx+nx], 'Remainder': traj5[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b','dyn_obj':False}
+        robots[5] = {"State": traj6[:nx], 'Ref': traj6[nx:r_model.N*nx+nx], 'Remainder': traj6[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'm','dyn_obj':False}
+        robots[6] = {"State": traj7[:nx], 'Ref': traj7[nx:r_model.N*nx+nx], 'Remainder': traj7[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'm','dyn_obj':False}
+        robots[7] = {"State": traj8[:nx], 'Ref': traj8[nx:r_model.N*nx+nx], 'Remainder': traj8[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'g','dyn_obj':False}
+        robots[8] = {"State": traj9[:nx], 'Ref': traj9[nx:r_model.N*nx+nx], 'Remainder': traj9[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'g','dyn_obj':False}
+        robots[9] = {"State": traj10[:nx], 'Ref': traj10[nx:r_model.N*nx+nx], 'Remainder': traj10[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'g','dyn_obj':False}
+        robots[10] = {"State": traj_dyn[:nx], 'Ref': traj_dyn[nx:r_model.N*nx+nx], 'Remainder': traj_dyn[r_model.N*nx+nx:], 'u': [], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'k','dyn_obj':True}
 
 
     if case_nr == 8:
@@ -491,10 +500,10 @@ if __name__=="__main__":
 
         nx =5
         robots = {}
-        robots[0] = {"State": traj1[:nx], 'Ref': traj1[nx:r_model.N*nx+nx], 'Remainder': traj1[r_model.N*nx+nx:], 'u': [0,0], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'r'}
-        robots[1] = {"State": traj2[:nx], 'Ref': traj2[nx:r_model.N*nx+nx], 'Remainder': traj2[r_model.N*nx+nx:], 'u': [0,0], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b'}
-        robots[2] = {"State": traj3[:nx], 'Ref': traj3[nx:r_model.N*nx+nx], 'Remainder': traj3[r_model.N*nx+nx:], 'u': [0,0], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b'}
-        robots[3] = {"State": traj4[:nx], 'Ref': traj4[nx:r_model.N*nx+nx], 'Remainder': traj4[r_model.N*nx+nx:], 'u': [0,0], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b'}
+        robots[0] = {"State": traj1[:nx], 'Ref': traj1[nx:r_model.N*nx+nx], 'Remainder': traj1[r_model.N*nx+nx:], 'u': [0,0], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'r','dyn_obj':False}
+        robots[1] = {"State": traj2[:nx], 'Ref': traj2[nx:r_model.N*nx+nx], 'Remainder': traj2[r_model.N*nx+nx:], 'u': [0,0], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b','dyn_obj':False}
+        robots[2] = {"State": traj3[:nx], 'Ref': traj3[nx:r_model.N*nx+nx], 'Remainder': traj3[r_model.N*nx+nx:], 'u': [0,0], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b','dyn_obj':False}
+        robots[3] = {"State": traj4[:nx], 'Ref': traj4[nx:r_model.N*nx+nx], 'Remainder': traj4[r_model.N*nx+nx:], 'u': [0,0], 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b','dyn_obj':False}
 
         
         
