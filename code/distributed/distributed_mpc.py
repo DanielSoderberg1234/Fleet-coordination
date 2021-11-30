@@ -16,6 +16,12 @@ class MPCGenerator:
         # Cost for deviating from the current reference
         return q*( (xref-x)**2 + (yref-y)**2 ) + qtheta*(thetaref-theta)**2
 
+
+    def cost_turn_left(self,theta,thetaref,qtheta): 
+        # Cost for deviating from the current reference only 
+        return qtheta*100*cs.fmax(0, -(thetaref-theta))**2
+
+
     def cost_lines(self,ref,x,y,N):
         """
         Calculations according to: 
@@ -68,15 +74,11 @@ class MPCGenerator:
         return cs.mmin(dist_vec[:])
 
     def cost_acceleration(self,u0,u1,qaccV,qaccW): 
-        cost = 0
-        cost += qaccV*(u1[0]-u0[0])**2
-        cost += qaccW*(u1[1]-u0[1])**2
-        return cost
+        return qaccV*(u1[0]-u0[0])**2 + qaccW*(u1[1]-u0[1])**2
         
 
-    def cost_all_acceleration(self,u,qaccV,qaccW): 
+    def cost_all_acceleration(self,u,qaccV,qaccW,N): 
         nu = 2
-        N = 20
         cost = 0
 
         u0 = u[:-nu]
@@ -97,6 +99,10 @@ class MPCGenerator:
         umin = [vmin,wmin]*N
         umax = [vmax,wmax]*N
         return og.constraints.Rectangle(umin, umax)
+    
+    def cost_robot2robot_dist(self,x1,y1,x2,y2,qobs): 
+        # Cost for being closer than r to the other robot
+        return qobs*cs.fmax(0.0, 1**2 - (x1-x2)**2 - (y1-y2)**2)**2
 
     def generate_mpc_formulation(self): 
 
@@ -131,13 +137,13 @@ class MPCGenerator:
         cost += self.cost_inital_acceleration(u,uref, qaccV, qaccW)
 
         # Cost for all acceleration 
-        cost += self.cost_all_acceleration(u,qaccV,qaccW)
+        cost += self.cost_all_acceleration(u,qaccV,qaccW,N)
         
         avoid_col = True
         
         flag = True
         
-        # i: Timesteps, j: Robots, k: Pairs of robots
+        # i: Timesteps, j: control signal index, k: coordinate index
         for i,j,k in zip( range(0,nx*N,nx), range(0,nu*N,nu), range(0,2*N,2)):
             # Get the data for the current steps
             refi = ref[i:i+nx]
@@ -148,6 +154,7 @@ class MPCGenerator:
             # Calculate the cost of all robots deviating from their reference
             #cost += self.cost_state_ref(x,y,theta,xref,yref,thetaref,q,qtheta)
             cost += q*self.cost_lines(ref,x,y,N)
+            cost += self.cost_turn_left(theta,thetaref,qtheta)
             
             # Calculate the cost on all control actions
             cost += r*cs.dot(uref-uj,uref-uj)
@@ -159,16 +166,15 @@ class MPCGenerator:
 
             # Avoid collisions
             #Only check first position in the other robots predicted traj.
-            
-            
-            for r in range(self.nr_of_robots-1):
-                
-                ck = c[2*N*r + k : 2*N*r + k + 2]
+
+            #prediction horizon in the other robots to acount for not a good solution maid test simple   
+            #if k < 100*2:
+            #cost for dist to all other robots
+            for other_robot_nr in range(self.nr_of_robots-1):
+                #2 = nr_of_coord (x,y),                 
+                ck = c[2*N*other_robot_nr + k : 2*N*other_robot_nr + k + 2]
                 xc,yc = ck[0],ck[1]
-                #cost += qobs*cs.fmax(0.0, 1.0 - (x-xc)**2 - (y-yc)**2)
-                #cost += qobs/10*cs.fmax(0.0, 2.0**2 - (x-xc)**2 - (y-yc)**2)
-                cost += qobs*cs.fmax(0.0, 1.0 - (x-xc)**2 - (y-yc)**2)
-                
+                cost += self.cost_robot2robot_dist(x,y,xc,yc,qobs)
 
         # Get the data for the last step
         refi = ref[nx*N:]
