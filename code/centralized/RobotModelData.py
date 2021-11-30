@@ -20,13 +20,14 @@ class RobotModelData:
     qaccW: float = 100      # Cost for angular acelaration
     qpol: float = 200       # Cost for being inside obstacle (polygon)
     qbounds: float = 200    # Cost four being out of bounds
+    qdyn: float = 500
 
 
     def get_weights(self):
         """
         Get all weights as a list.
         """
-        return [self.q, self.qtheta, self.r, self.qN, self.qthetaN, self.qobs, self.qaccV, self.qaccW, self.qpol, self.qbounds]
+        return [self.q, self.qtheta, self.r, self.qN, self.qthetaN, self.qobs, self.qaccV, self.qaccW, self.qpol, self.qbounds, self.qdyn]
 
 
 

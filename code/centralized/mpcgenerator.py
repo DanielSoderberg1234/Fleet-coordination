@@ -231,6 +231,20 @@ class MPCGenerator:
 
         return cost
 
+    def cost_dynamic_obstacle(self, robots, e,j,qpol): 
+        cost = 0.0 
+        N = 20
+        for robot_id in robots: 
+            x,y,theta = robots[robot_id]['State']
+            a,b, phi = e[0],e[1],e[2]
+            centers = e[3:]
+
+            # Equation for ellipse from: https://math.stackexchange.com/questions/426150/what-is-the-general-equation-of-the-ellipse-that-is-not-in-the-origin-and-rotate
+            c = centers[j:j+2]
+            cost += qpol*cs.fmax(0.0, 1.0 - ((x-c[0])*cs.cos(phi)+(y-c[1])*cs.sin(phi))**2/a**2 - ((x-c[0])*cs.sin(phi)-(y-c[1])*cs.cos(phi))**2/b**2)
+
+        return cost
+
     def bound_control_action(self, vmin,vmax,wmin,wmax,N): 
         # But hard constraints on the velocities of the robot
         N = self.nr_of_robots*N
@@ -243,16 +257,20 @@ class MPCGenerator:
         # Some predefined values, should maybe be read from a config file?
         (nu, nx, N, ts) = (2, 5, 20, 0.1)
 
-        # Input vector 2 trajectories, N long with nx states in each i=0,1,2,..,N-1
+        # Input vector nr_of_robot trajectories, N+1 long with nx states in each i=0,1,2,..,N
         p = cs.SX.sym('p',self.nr_of_robots*nx*(N+1))
 
         # Number of weights 
-        Q = cs.SX.sym('Q',10)
+        Q = cs.SX.sym('Q',11)
 
-        # Parameters for obstacles and boundaries
+        # Parameters for 5 obstacles, 12 each
         o = cs.SX.sym('o',5*12)
 
+        # Parameters for boundaries, 12 
         b = cs.SX.sym('b',12)
+
+        # Parameters for a dynamic obstacle, described by an ellipse with a and b and then N centers
+        e = cs.SX.sym('e',3+N*2)
 
         # Optimization variables 2 robots each with nu control inputs for N steps
         u = cs.SX.sym('u',self.nr_of_robots*nu*N)
@@ -272,7 +290,7 @@ class MPCGenerator:
 
         
         # Get weights from input vectir as the last elements
-        q, qtheta, r, qN, qthetaN,qobs, qaccV,qaccW, qpol, qbound = Q[0],Q[1],Q[2],Q[3],Q[4],Q[5],Q[6],Q[7],Q[8],Q[9]
+        q, qtheta, r, qN, qthetaN,qobs, qaccV,qaccW, qpol, qbound, qdyn = Q[0],Q[1],Q[2],Q[3],Q[4],Q[5],Q[6],Q[7],Q[8],Q[9],Q[10]
 
         # Define the cost
         cost = 0
@@ -294,6 +312,8 @@ class MPCGenerator:
             cost += self.cost_outside_boundaries(robots,b,qbound)
             # Cost of being inside an object 
             cost += self.cost_inside_polygon(robots, o, qpol)
+            # Cost for dynamic obstavle
+            cost += self.cost_dynamic_obstacle(robots,e,j,qdyn)
             
         # Add acceleration cost
         cost += self.cost_all_acceleration(robots,qaccV,qaccW)
@@ -305,7 +325,7 @@ class MPCGenerator:
         bounds = self.bound_control_action(vmin=.0,vmax=1.5,wmin=-1,wmax=1,N=N)
         
         # Concate all parameters
-        p = cs.vertcat(p,Q,o,b)
+        p = cs.vertcat(p,Q,o,b,e)
 
         return u,p,cost,bounds
 
@@ -337,5 +357,5 @@ class MPCGenerator:
        
 
 if __name__=='__main__':
-    mpc = MPCGenerator(nr_of_robots=10)
+    mpc = MPCGenerator(nr_of_robots=5)
     mpc.build_mpc()
