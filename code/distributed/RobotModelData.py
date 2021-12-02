@@ -16,12 +16,20 @@ class RobotModelData:
     qN: float = 100         # Final cost of deviating from x and y reference
     qthetaN: float = 10     # Final cost of deviating from angle reference
     qobs: float = 200       # Cost for being closer than r to the other robot
-    qaccV: float = 100
-    qaccW: float = 100
+    qaccV: float = 100      # Cost for acelerating and decelerating
+    qaccW: float = 100      # Cost for angular acelaration
+    qpol: float = 200       # Cost for being inside obstacle (polygon)
+#    qbounds: float = 200    # Cost four being out of bounds
+#    qdyn: float = 500
 
 
     def get_weights(self):
-        return [self.q, self.qtheta, self.r, self.qN, self.qthetaN, self.qobs, self.qaccV, self.qaccW]
+        """
+        Get all weights as a list.
+        """
+        return [self.q, self.qtheta, self.r, self.qN, self.qthetaN, self.qobs, self.qaccV, self.qaccW, self.qpol]
+        #return [self.q, self.qtheta, self.r, self.qN, self.qthetaN, self.qobs, self.qaccV, self.qaccW, self.qpol, self.qbounds, self.qdyn]
+
 
 
 
