@@ -53,24 +53,7 @@ class CollisionAvoidance:
         self.time_vec2 = []
         self.time_vec3 = {0: [], 1: []}
 
-
-    def control_action_to_trajectory(self,x,y,theta,u): 
-        # Get the linear and angular velocities
-        v = u[0::2]
-        w = u[1::2]
-
-        # Create a list of x and y states
-        xlist = []
-        ylist = []
-
-        for vi,wi in zip(v,w): 
-            x,y,theta = model(x,y,theta,[vi,wi],self.ts)
-            xlist.append(x)
-            ylist.append(y)
-
-        return xlist,ylist
-
-    def predicted_states(self,x,y,theta,u): 
+    def predicted_states_from_u(self,x,y,theta,u): 
         # Get the linear and angular velocities
         v = u[0::2]
         w = u[1::2]
@@ -187,7 +170,7 @@ class CollisionAvoidance:
                     [ustar[0].extend(robots[robot_id]['Ref'][self.nx*i+3:self.nx*(i+1)]) for i in range(self.N)]
                     self.ustar[robot_id] = ustar[0]
                     x,y,theta = robots[robot_id]['Ref'][0:3]
-                states = self.predicted_states(x,y,theta,self.ustar[robot_id])
+                states = self.predicted_states_from_u(x,y,theta,self.ustar[robot_id])
                 
                 predicted_states_temp[robot_id] = states
 
@@ -204,23 +187,18 @@ class CollisionAvoidance:
         self.time_vec3[1].append(times[1])
 
     def run_one_iteration(self,robots,obstacles,iteration_step,predicted_states): 
+        #run the distributed algorithm
         self.distributed_algorithm(robots,  obstacles, predicted_states)
-
         for robot_id in robots: 
             self.update_state(robots[robot_id])
-            self.update_ref(robots[robot_id])
-        
+            self.update_ref(robots[robot_id])        
+        # Call the plotter object to plot everyting
         self.plotter.plot(robots, obstacles, iteration_step)
         
         
     def run(self, robots, obstacles, sim_steps, predicted_states):
-        plt.show(block=False)
-        plt.tight_layout(pad=3.0)
-        
-
         for i in range(0,sim_steps):
             self.run_one_iteration(robots,obstacles,i,predicted_states)
-
         self.plotter.stop()
         self.plotter.plot_computation_time(self.time_vec)
         
@@ -228,14 +206,14 @@ class CollisionAvoidance:
 if __name__=="__main__":
     
     
-    case_nr = 2
-    obstacle_case = 0
+    case_nr = 1
+    obstacle_case = 1
 
-    sim_steps = 100
+    sim_steps = 60
     N_steps = 180
     #r_model = RobotModelData(nx=5, q = 5, qtheta = 10, qobs=400, r=20, qN=200, qaccW=5, qthetaN = 200, qaccV=15, N=20) # w = .75, pmax = 10, epsilon = .01 ref
     #r_model = RobotModelData(nx=5, q =250, qtheta = 10, qobs=400, r=30, qN=150, qaccW=.5, qthetaN = 20, qaccV=15, N=20) # w = .75, pmax = 5, epsilon = .01 line
-    r_model = RobotModelData(nx=5, q = 0, qtheta = 10, qobs=2000, r=30, qN=2000, qpol=2000, qaccW=.5, qthetaN = 20, qaccV=15, N=20) # under development for better performance
+    r_model = RobotModelData(nx=5, q = 250, qtheta = 10, qobs=2000, r=30, qN=2000, qpol=2000, qaccW=.5, qthetaN = 20, qaccV=15, N=20) # under development for better performance
 
     obstacles = {}
     obstacles['Unpadded'] =  [None, None, None, None, None]
@@ -415,7 +393,7 @@ if __name__=="__main__":
         
     u = avoid.get_control_signals_from_ref(robots)
     #x = robots[i]['Ref'][0]
-    predicted_states = {i: avoid.predicted_states(robots[i]['Ref'][0],robots[i]['Ref'][1],robots[i]['Ref'][2],u[i]) for i in range(r_model.nr_of_robots)}
+    predicted_states = {i: avoid.predicted_states_from_u(robots[i]['Ref'][0],robots[i]['Ref'][1],robots[i]['Ref'][2],u[i]) for i in range(r_model.nr_of_robots)}
 #    predicted_states = {i: [0]*r_model.N*2 for i in range(r_model.nr_of_robots)}
     avoid.run(robots, obstacles, sim_steps, predicted_states)
     avoid.mng.kill()
