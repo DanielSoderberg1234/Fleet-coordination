@@ -81,6 +81,12 @@ class CollisionAvoidance:
             robot['Ref'][-self.nx:] = robot['Remainder'][:self.nx]
             del robot['Remainder'][:self.nx]
 
+    def update_dynamic_obstacle(self,obstacles): 
+        # Take one step for the ellipse with velocity in each coordinate times sampling time
+        if obstacles['Dynamic']['active']:
+            obstacles['Dynamic']['center'][0] += self.ts*obstacles['Dynamic']['vel'][0]
+            obstacles['Dynamic']['center'][1] += self.ts*obstacles['Dynamic']['vel'][1]
+
         
     def get_input(self, state, ref, obstacles, predicted_states, robot_id):
         # Create the input vector
@@ -96,6 +102,20 @@ class CollisionAvoidance:
         
         for ob in obstacles['Padded']: 
             p.extend(polygon_to_eqs(ob))
+
+        # Append equation for boundaries
+        p.extend(polygon_to_eqs(obstacles['Boundaries']))
+
+        # Append parameters for the ellipse: a,b,phi,predicted centers
+        p.append(obstacles['Dynamic']['a']+obstacles['Dynamic']['apad'])
+        p.append(obstacles['Dynamic']['b']+obstacles['Dynamic']['bpad'])
+        p.append(obstacles['Dynamic']['phi'])
+        p.extend(predict(obstacles['Dynamic']['center'][0],
+                        obstacles['Dynamic']['center'][1],
+                        obstacles['Dynamic']['vel'][0],
+                        obstacles['Dynamic']['vel'][1],
+                        self.N,
+                        self.ts))
 
         return p
 
@@ -190,6 +210,7 @@ class CollisionAvoidance:
         for robot_id in robots: 
             self.update_state(robots[robot_id])
             self.update_ref(robots[robot_id])        
+        self.update_dynamic_obstacle(obstacles)
         # Call the plotter object to plot everyting
         self.plotter.plot(robots, obstacles, iteration_step)
         
@@ -203,25 +224,26 @@ class CollisionAvoidance:
 
 if __name__=="__main__":
     
-    
-    case_nr = 2
+    case_nr = 1
     obstacle_case = 0
+    dynamic_obstacle = True
 
-    sim_steps = 60
+    sim_steps = 100
     N_steps = 180
     #r_model = RobotModelData(nx=5, q = 5, qtheta = 10, qobs=400, r=20, qN=200, qaccW=5, qthetaN = 200, qaccV=15, N=20) # w = .75, pmax = 10, epsilon = .01 ref
     #r_model = RobotModelData(nx=5, q =250, qtheta = 10, qobs=400, r=30, qN=150, qaccW=.5, qthetaN = 20, qaccV=15, N=20) # w = .75, pmax = 5, epsilon = .01 line
-    r_model = RobotModelData(nx=5, q = 250, qtheta = 10, qobs=2000, r=20, qN=2000, qpol=2000, qaccW=.5, qthetaN = 20, qaccV=15, N=20) # under development for better performance
+    r_model = RobotModelData(nx=5, q = 250, qtheta = 10, qobs=2000, r=20, qN=2000, qpol=2000, qbounds=20000, qaccW=.5, qthetaN = 20, qaccV=15, N=20) # under development for better performance
+    r_model.qdyn = r_model.qdyn*dynamic_obstacle
 
     obstacles = {}
     obstacles['Unpadded'] =  [None, None, None, None, None]
     obstacles['Padded'] = [None, None, None, None, None]
 
     obstacles['Boundaries'] =  Polygon([[-4.5, -4.5], [4.5, -4.5], [4.5, 4.5], [-4.5, 4.5]]) 
-    obstacles['Dynamic'] = {'center': [-3,-3], 'a': 0.5, 'b': 0.25, 'vel': [1,1], 'apad': 0.5, 'bpad': 0.5, 'phi': cs.pi/4, 'active': False}
+    obstacles['Dynamic'] = {'center': [-3.5,-3.5], 'a': 0.5, 'b': 0.25, 'vel': [1,1], 'apad': 0.5, 'bpad': 0.5, 'phi': cs.pi/4, 'active': dynamic_obstacle}
 
     # obs case1, 4 obstacles in center
-    if obstacle_case == 1:       
+    if obstacle_case == 1:
         obstacles['Unpadded'] =  [unpadded_square(-1,-1,1,1), unpadded_square(1,-1,1,1), unpadded_square(1,1,1,1), unpadded_square(-1,1,1,1), None]
         obstacles['Padded'] = [padded_square(-1,-1,1,1, 0.5), padded_square(1,-1,1,1, 0.5), padded_square(1,1,1,1, 0.5), padded_square(-1,1,1,1, 0.5), None]
     

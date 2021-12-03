@@ -119,7 +119,7 @@ class MPCGenerator:
 
         return cost
     
-    def cost_robot_collision(self, x, y, c, k, N, qobs):
+    def cost_collision(self, x, y, c, k, N, qobs):
         cost = 0.0
         for other_robot_nr in range(self.nr_of_robots-1):
             #2 = nr_of_coord (x,y),                 
@@ -129,30 +129,26 @@ class MPCGenerator:
         return cost
 
 
-    def cost_outside_boundaries(self,robots,b,qb): 
+    def cost_outside_boundaries(self,x, y,b,qb): 
         cost = 0.0
-        for robot_id in robots: 
-            x,y,theta = robots[robot_id]['State']
+        outside = 0
+        for j in range(0,12,3):
+            h = b[j:j+3]
+            outside += cs.fmin(0.0, h[2] - h[1]*y - h[0]*x )**2
 
-            outside = 0
-            for j in range(0,12,3):
-                h = b[j:j+3]
-                outside += cs.fmin(0.0, h[2] - h[1]*y - h[0]*x )**2
-
-            cost += qb*outside
+        cost += qb*outside
 
         return cost
 
-    def cost_dynamic_obstacle(self, robots, e,j,qpol): 
+    def cost_dynamic_obstacle(self, x, y, e, j, qdyn): 
         cost = 0.0 
-        for robot_id in robots: 
-            x,y,theta = robots[robot_id]['State']
-            a,b, phi = e[0],e[1],e[2]
-            centers = e[3:]
+        
+        a,b, phi = e[0],e[1],e[2]
+        centers = e[3:]
 
-            # Equation for ellipse from: https://math.stackexchange.com/questions/426150/what-is-the-general-equation-of-the-ellipse-that-is-not-in-the-origin-and-rotate
-            c = centers[j:j+2]
-            cost += qpol*cs.fmax(0.0, 1.0 - ((x-c[0])*cs.cos(phi)+(y-c[1])*cs.sin(phi))**2/a**2 - ((x-c[0])*cs.sin(phi)-(y-c[1])*cs.cos(phi))**2/b**2)
+        # Equation for ellipse from: https://math.stackexchange.com/questions/426150/what-is-the-general-equation-of-the-ellipse-that-is-not-in-the-origin-and-rotate
+        c = centers[j:j+2]
+        cost += qdyn*cs.fmax(0.0, 1.0 - ((x-c[0])*cs.cos(phi)+(y-c[1])*cs.sin(phi))**2/a**2 - ((x-c[0])*cs.sin(phi)-(y-c[1])*cs.cos(phi))**2/b**2)
 
         return cost
 
@@ -162,7 +158,7 @@ class MPCGenerator:
         (nu, nx, N, ts) = (2, 5, 20, 0.1)
 
         # the 8 last are the weights
-        Q = cs.SX.sym('Q',9)
+        Q = cs.SX.sym('Q',11)
 
         # Input vector 1 trajectory, N long with nx states in each i=0,1,2,..,N-1.
         #reference trajectory for current robot.
@@ -174,6 +170,12 @@ class MPCGenerator:
         # Parameters for 5 obstacles, 12 each
         o = cs.SX.sym('o',5*12)
 
+        # Parameters for boundaries, 12 
+        b = cs.SX.sym('b',12)
+
+        # Parameters for a dynamic obstacle, described by an ellipse with a and b and then N centers
+        e = cs.SX.sym('e',3+N*2)
+
         # Optimization variables, nu control inputs for N steps for one robot
         u = cs.SX.sym('u',nu*N)
 
@@ -181,7 +183,7 @@ class MPCGenerator:
         x, y, theta = ref[0], ref[1], ref[2]
 
         # Get weights from input vector as the last elements
-        q,qtheta,r,qN,qthetaN,qobs,qaccV,qaccW,qpol = Q[0],Q[1],Q[2],Q[3],Q[4],Q[5],Q[6],Q[7],Q[8]
+        q, qtheta, r, qN, qthetaN,qobs, qaccV,qaccW, qpol, qbounds, qdyn = Q[0],Q[1],Q[2],Q[3],Q[4],Q[5],Q[6],Q[7],Q[8],Q[9],Q[10]
 
         # Define the cost
         cost = 0
@@ -189,9 +191,6 @@ class MPCGenerator:
         # Cost for initial acceleration from previous state
         u0 = ref[3:5] 
         cost += self.cost_acceleration(u[:2],u0, qaccV, qaccW)
-
-        # Cost for all acceleration 
-        cost += self.cost_all_acceleration(u,qaccV,qaccW,N)
         
         # i: state index, j: control signal index, k: coordinate index
         for i,j,k in zip( range(0,nx*N,nx), range(0,nu*N,nu), range(0,2*N,2)):
@@ -204,21 +203,23 @@ class MPCGenerator:
             # Calculate the cost of all robots deviating from their reference
             #cost += self.cost_state_ref(x,y,theta,xref,yref,thetaref,q,qtheta)
             cost += q*self.cost_lines(ref,x,y,N)
+            # cost for turning left
             cost += self.cost_turn_left(theta,thetaref,qtheta)
-            
             # Calculate the cost on all control actions
             cost += r*cs.dot(uref-uj,uref-uj)
-
             # Update the states
             x,y,theta = model(x,y,theta,uj,ts)
-
+            #cost for dist to all other robots
+            cost += self.cost_collision(x,y, c, k, N, qobs)
+            # Cost of being inside an object 
+            cost += self.cost_outside_boundaries(x,y, b, qbounds)
             # Cost of being inside an object 
             cost += self.cost_inside_polygon(x,y, o, qpol)
-            
-            # Avoid collisions
-            #cost for dist to all other robots
-            cost += self.cost_robot_collision(x,y, c, k, N, qobs)
-            
+            # Cost for dynamic obstacle
+            cost += self.cost_dynamic_obstacle(x,y,e,j,qdyn)
+
+        # Cost for all acceleration 
+        cost += self.cost_all_acceleration(u,qaccV,qaccW,N)
 
         # Get the data for the last step
         refi = ref[nx*N:]
@@ -231,8 +232,7 @@ class MPCGenerator:
         bounds = self.bound_control_action(vmin=0.0,vmax=1.5,wmin=-1,wmax=1,N=N)
         
         # Concate all parameters
-        p = cs.vertcat(ref,Q,c,o)
-       
+        p = cs.vertcat(ref,Q,c,o,b,e)
 
         return u,p,cost,bounds
 
