@@ -119,13 +119,13 @@ class MPCGenerator:
 
         return cost
     
-    def cost_collision(self, x, y, c, k, N, qobs):
+    def cost_collision(self, x, y, c, other_robots, k, N, qobs):
         cost = 0.0
         for other_robot_nr in range(self.nr_of_robots-1):
             #2 = nr_of_coord (x,y),                 
             ck = c[2*N*other_robot_nr + k : 2*N*other_robot_nr + k + 2]
             xc,yc = ck[0],ck[1]
-            cost += self.cost_robot2robot_dist(x,y,xc,yc,qobs)
+            cost += other_robots[other_robot_nr]*self.cost_robot2robot_dist(x,y,xc,yc,qobs)
         return cost
 
 
@@ -176,6 +176,9 @@ class MPCGenerator:
         # Parameters for a dynamic obstacle, described by an ellipse with a and b and then N centers
         e = cs.SX.sym('e',3+N*2)
 
+        # Parameter for number of other robot trajectories to consider
+        other_robots = cs.SX.sym('other_robots',self.nr_of_robots-1)
+
         # Optimization variables, nu control inputs for N steps for one robot
         u = cs.SX.sym('u',nu*N)
 
@@ -210,7 +213,7 @@ class MPCGenerator:
             # Update the states
             x,y,theta = model(x,y,theta,uj,ts)
             #cost for dist to all other robots
-            cost += self.cost_collision(x,y, c, k, N, qobs)
+            cost += self.cost_collision(x,y, c, other_robots, k, N, qobs)
             # Cost of being inside an object 
             cost += self.cost_outside_boundaries(x,y, b, qbounds)
             # Cost of being inside an object 
@@ -232,7 +235,7 @@ class MPCGenerator:
         bounds = self.bound_control_action(vmin=0.0,vmax=1.5,wmin=-1,wmax=1,N=N)
         
         # Concate all parameters
-        p = cs.vertcat(ref,Q,c,o,b,e)
+        p = cs.vertcat(ref,Q,c,other_robots,o,b,e)
 
         return u,p,cost,bounds
 
@@ -264,5 +267,5 @@ class MPCGenerator:
        
 
 if __name__=='__main__':
-    mpc = MPCGenerator(nr_of_robots=2)
+    mpc = MPCGenerator(nr_of_robots=20)
     mpc.build_mpc()

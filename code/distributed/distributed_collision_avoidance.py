@@ -27,6 +27,7 @@ class CollisionAvoidance:
     def __init__(self, r_model: RobotModelData):
         # Load parameters 
         self.nr_of_robots = r_model.nr_of_robots
+        self.max_nr_of_robots = r_model.max_nr_of_robots
         self.nx = r_model.nx
         self.nu = r_model.nu 
         self.N = r_model.N 
@@ -38,7 +39,7 @@ class CollisionAvoidance:
         self.plotter = Plotter(name='distributed',r_model=r_model)
 
         # Create the solver and open a tcp port to it 
-        self.mng = og.tcp.OptimizerTcpManager("distributed1/distributed_solver_{}".format(self.nr_of_robots))
+        self.mng = og.tcp.OptimizerTcpManager("distributed1/distributed_solver_{}".format(self.max_nr_of_robots))
         self.mng.start()
         self.mng.ping()
 
@@ -96,9 +97,14 @@ class CollisionAvoidance:
         p.extend(self.weights)
 
         # Get predicted states for the other robot
-        for i in predicted_states: 
-            if robot_id != i:
+        for i in predicted_states:
+            if i != robot_id:
                 p.extend(predicted_states[i])
+        # Fill in with  zero trejectories for missing robots
+        p.extend([0]*2*self.N*(self.max_nr_of_robots - self.nr_of_robots))
+
+        p.extend([1]*(self.nr_of_robots-1))
+        p.extend([0]*(self.max_nr_of_robots - self.nr_of_robots))
         
         for ob in obstacles['Padded']: 
             p.extend(polygon_to_eqs(ob))
@@ -226,13 +232,13 @@ if __name__=="__main__":
     
     case_nr = 1
     obstacle_case = 0
-    dynamic_obstacle = True
+    dynamic_obstacle = False
 
     sim_steps = 100
     N_steps = 180
     #r_model = RobotModelData(nx=5, q = 5, qtheta = 10, qobs=400, r=20, qN=200, qaccW=5, qthetaN = 200, qaccV=15, N=20) # w = .75, pmax = 10, epsilon = .01 ref
     #r_model = RobotModelData(nx=5, q =250, qtheta = 10, qobs=400, r=30, qN=150, qaccW=.5, qthetaN = 20, qaccV=15, N=20) # w = .75, pmax = 5, epsilon = .01 line
-    r_model = RobotModelData(nx=5, q = 250, qtheta = 10, qobs=2000, r=20, qN=2000, qpol=2000, qbounds=20000, qaccW=.5, qthetaN = 20, qaccV=15, N=20) # under development for better performance
+    r_model = RobotModelData(nx=5, q = 250, qtheta = 10, qobs=200, r=20, qN=200, qpol=200, qbounds=200, qaccW=.5, qthetaN = 20, qaccV=15, N=20) # under development for better performance
     r_model.qdyn = r_model.qdyn*dynamic_obstacle
 
     obstacles = {}

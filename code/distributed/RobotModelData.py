@@ -3,8 +3,9 @@ from dataclasses import dataclass
 @dataclass
 class RobotModelData:
     # Robot parameters
-    nr_of_robots: int = 2   # Number of robots
-    nx: int = 3             # Number of states for each robot
+    nr_of_robots: int = 2       # Number of robots
+    max_nr_of_robots: int = 20  # Number of robots
+    nx: int = 3                 # Number of states for each robot
     nu: int = 2             # Nr of control inputs
     N: int = 20             # Length of horizon 
 
