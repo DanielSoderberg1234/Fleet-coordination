@@ -74,11 +74,9 @@ class CollisionAvoidance:
         x,y,theta = model(x,y,theta,robot['u'][:2],self.ts)
         robot['State'] = [x,y,theta,robot['u'][0],robot['u'][1]]
 
-    def update_ref(self,robot):
-   
+    def update_ref(self,robot):   
         # Shift reference once step to the left
         robot['Ref'][:self.nx*(self.N-1)] = robot['Ref'][self.nx:]
-
         if len(robot['Remainder']) > 0:
             robot['Ref'][-self.nx:] = robot['Remainder'][:self.nx]
             del robot['Remainder'][:self.nx]
@@ -206,14 +204,14 @@ class CollisionAvoidance:
 if __name__=="__main__":
     
     
-    case_nr = 1
-    obstacle_case = 1
+    case_nr = 2
+    obstacle_case = 0
 
     sim_steps = 60
     N_steps = 180
     #r_model = RobotModelData(nx=5, q = 5, qtheta = 10, qobs=400, r=20, qN=200, qaccW=5, qthetaN = 200, qaccV=15, N=20) # w = .75, pmax = 10, epsilon = .01 ref
     #r_model = RobotModelData(nx=5, q =250, qtheta = 10, qobs=400, r=30, qN=150, qaccW=.5, qthetaN = 20, qaccV=15, N=20) # w = .75, pmax = 5, epsilon = .01 line
-    r_model = RobotModelData(nx=5, q = 250, qtheta = 10, qobs=2000, r=30, qN=2000, qpol=2000, qaccW=.5, qthetaN = 20, qaccV=15, N=20) # under development for better performance
+    r_model = RobotModelData(nx=5, q = 250, qtheta = 10, qobs=2000, r=20, qN=2000, qpol=2000, qaccW=.5, qthetaN = 20, qaccV=15, N=20) # under development for better performance
 
     obstacles = {}
     obstacles['Unpadded'] =  [None, None, None, None, None]

@@ -118,6 +118,16 @@ class MPCGenerator:
             cost += qobs*inside
 
         return cost
+    
+    def cost_robot_collision(self, x, y, c, k, N, qobs):
+        cost = 0.0
+        for other_robot_nr in range(self.nr_of_robots-1):
+            #2 = nr_of_coord (x,y),                 
+            ck = c[2*N*other_robot_nr + k : 2*N*other_robot_nr + k + 2]
+            xc,yc = ck[0],ck[1]
+            cost += self.cost_robot2robot_dist(x,y,xc,yc,qobs)
+        return cost
+
 
     def cost_outside_boundaries(self,robots,b,qb): 
         cost = 0.0
@@ -135,7 +145,6 @@ class MPCGenerator:
 
     def cost_dynamic_obstacle(self, robots, e,j,qpol): 
         cost = 0.0 
-        N = 20
         for robot_id in robots: 
             x,y,theta = robots[robot_id]['State']
             a,b, phi = e[0],e[1],e[2]
@@ -168,7 +177,7 @@ class MPCGenerator:
         # Optimization variables, nu control inputs for N steps for one robot
         u = cs.SX.sym('u',nu*N)
 
-        # Values to fill the dictionary
+        # extract current state values
         x, y, theta = ref[0], ref[1], ref[2]
 
         # Get weights from input vector as the last elements
@@ -177,15 +186,14 @@ class MPCGenerator:
         # Define the cost
         cost = 0
 
-        # Cost for acceleration from previous state
-        uref = ref[3:5]
-        ui = u[:2]
-        cost += self.cost_inital_acceleration(u,uref, qaccV, qaccW)
+        # Cost for initial acceleration from previous state
+        u0 = ref[3:5] 
+        cost += self.cost_acceleration(u[:2],u0, qaccV, qaccW)
 
         # Cost for all acceleration 
         cost += self.cost_all_acceleration(u,qaccV,qaccW,N)
         
-        # i: Timesteps, j: control signal index, k: coordinate index
+        # i: state index, j: control signal index, k: coordinate index
         for i,j,k in zip( range(0,nx*N,nx), range(0,nu*N,nu), range(0,2*N,2)):
             # Get the data for the current steps
             refi = ref[i:i+nx]
@@ -200,8 +208,6 @@ class MPCGenerator:
             
             # Calculate the cost on all control actions
             cost += r*cs.dot(uref-uj,uref-uj)
-            #cost += r*(uref[0]-uj[0])**2 + 10*r*(uref[1]-uj[1])**2
-            #cost += r*cs.dot(uj,uj)
 
             # Update the states
             x,y,theta = model(x,y,theta,uj,ts)
@@ -210,22 +216,15 @@ class MPCGenerator:
             cost += self.cost_inside_polygon(x,y, o, qpol)
             
             # Avoid collisions
-            #Only check first position in the other robots predicted traj.
-
-            #prediction horizon in the other robots to acount for not a good solution maid test simple   
-            #if k < 100*2:
             #cost for dist to all other robots
-            for other_robot_nr in range(self.nr_of_robots-1):
-                #2 = nr_of_coord (x,y),                 
-                ck = c[2*N*other_robot_nr + k : 2*N*other_robot_nr + k + 2]
-                xc,yc = ck[0],ck[1]
-                cost += self.cost_robot2robot_dist(x,y,xc,yc,qobs)
+            cost += self.cost_robot_collision(x,y, c, k, N, qobs)
+            
 
         # Get the data for the last step
         refi = ref[nx*N:]
         xref, yref, thetaref= refi[0], refi[1], refi[2]
 
-        # Calculate the cost of all robots deviating from their reference
+        # Calculate the cost of deviating from final reference
         cost += self.cost_state_ref(x,y,theta,xref,yref,thetaref,qN,qthetaN)
 
         # Get the bounds for the control action
