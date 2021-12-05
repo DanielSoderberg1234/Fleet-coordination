@@ -26,6 +26,25 @@ def generate_straight_trajectory(x,y,theta,v,ts,N):
 
     return states
 
+def generate_turn_right_trajectory(x,y,theta,v,ts,N1,N2): 
+    states = [x,y,theta,v,0]
+
+    theta_turn = theta-cs.pi/2
+    if theta_turn < 0:
+        theta_turn+2*cs.pi
+
+    for i in range(0,N1): 
+        x,y,theta = model(x,y,theta,[v,0],ts=ts)
+        states.extend([x,y,theta,v,0])
+
+    for i in range(0,N2): 
+        if i == N2-1: 
+            v = 0
+        x,y,theta_turn = model(x,y,theta_turn,[v,0],ts=ts)
+        states.extend([x,y,theta_turn,v,0])
+
+    return states
+
 def control_action_to_trajectory(x,y,theta,u,ts): 
         # Get the linear and angular velocities
         v = u[0::2]
