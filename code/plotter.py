@@ -24,7 +24,7 @@ class Plotter:
 
         plt.show(block=False)
         plt.tight_layout(pad=3.0)
-        #plt.pause(10)
+        
 
     def stop(self): 
         input("Press enter to close plot")
@@ -145,8 +145,7 @@ class Plotter:
             plt.plot(t_vec, [lim_dist]*len(self.dist[comb]), label="Limit")
 
         plt.ylabel("m")
-        #plt.xlabel("N")
-        plt.legend()
+       #plt.legend()
         plt.title("Distance")
         plt.grid()
     
