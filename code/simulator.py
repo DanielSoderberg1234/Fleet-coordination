@@ -285,9 +285,13 @@ class Simulator:
         if self.centralized:
             for i in range(0,sim_steps): 
                 self.step_centralized(robots,obstacles,iteration_step=i)
+                #if i==20 or i==50: 
+                #    input("Take picture")
         elif self.distributed: 
             for i in range(0,sim_steps): 
                 self.step_distributed(robots,obstacles,i,predicted_states)
+                #if i==20 or i==50: 
+                #    input("Take picture")
         self.plotter.stop()
         self.plotter.plot_computation_time(self.time_vec)
 
@@ -298,13 +302,15 @@ if __name__=="__main__":
     nu = 2
     N = 20
     sim_steps = 70
-    centralized = True
-    distributed = False
-    case_nr = 1
+    centralized = False
+    distributed = True
+    case_nr = 2
+    
+    q_lines = 10 
 
     if case_nr == 1:
         N_steps = 60 
-        r_model = RobotModelData(nr_of_robots=2, nx=5, qobs=200, r=50, qN=200, qaccW=50, qaccV=50, qpol=200, qbounds=200, qdyn=0)
+        r_model = RobotModelData(nr_of_robots=2, nx=5, qobs=200, r=50, qN=200, qaccW=50, qaccV=50, qpol=200, qbounds=200, qdyn=0, q=q_lines)
         avoid = Simulator(r_model, centralized=centralized, distributed=distributed)
         traj1 = generate_straight_trajectory(x=-3,y=0,theta=0,v=1,ts=0.1,N=N_steps) # Trajectory from x=-1, y=0 driving straight to the right
         traj2 = generate_straight_trajectory(x=0,y=-3,theta=cs.pi/2,v=1,ts=0.1,N=N_steps) # Trajectory from x=0,y=-1 driving straight up
@@ -328,7 +334,7 @@ if __name__=="__main__":
 
     if case_nr == 2: 
         N_steps = 70
-        r_model = RobotModelData(nr_of_robots=10, nx=5, qobs=200, r=50, qN=200, qaccW=50, qaccV=50, qpol=200, qbounds=200, qdyn=200)
+        r_model = RobotModelData(nr_of_robots=10, nx=5, qobs=200, r=50, qN=200, qaccW=50, qaccV=50, qpol=200, qbounds=200, qdyn=0, q=q_lines)
         avoid = Simulator(r_model, centralized=centralized, distributed=distributed)
         traj1 = generate_straight_trajectory(x=-3,y=4,theta=3*cs.pi/2,v=1,ts=0.1,N=N_steps)
         traj2 = generate_straight_trajectory(x=0,y=4,theta=3*cs.pi/2,v=1,ts=0.1,N=N_steps) 
@@ -345,7 +351,7 @@ if __name__=="__main__":
         obstacles['Unpadded'] =  [None, None, None, None, None]
         obstacles['Padded'] = [None, None, None, None, None]
         obstacles['Boundaries'] =  Polygon([[-4.5, -4.5], [4.5, -4.5], [4.5, 4.5], [-4.5, 4.5]]) 
-        obstacles['Dynamic'] = {'center': [-3,-3], 'a': 0.5, 'b': 0.25, 'vel': [1,1], 'apad': 0.5, 'bpad': 0.5, 'phi': cs.pi/4, 'active': True}
+        obstacles['Dynamic'] = {'center': [-3,-3], 'a': 0.5, 'b': 0.25, 'vel': [1,1], 'apad': 0.5, 'bpad': 0.5, 'phi': cs.pi/4, 'active': False}
         
         nx =5
         robots = {}
@@ -369,7 +375,7 @@ if __name__=="__main__":
 
     if case_nr == 3:
         N_steps = 90 
-        r_model = RobotModelData(nr_of_robots=5, nx=5, qobs=200, r=50, qN=200, qaccW=50, qaccV=50, qpol=200, qbounds=200, qdyn=0)
+        r_model = RobotModelData(nr_of_robots=5, nx=5, qobs=200, r=50, qN=200, qaccW=50, qaccV=50, qpol=200, qbounds=200, qdyn=0, q=q_lines)
         avoid = Simulator(r_model, centralized=centralized, distributed=distributed)
         traj1 = generate_straight_trajectory(x=-4,y=0,theta=0,v=1,ts=0.1,N=N_steps) # Trajectory from x=-1, y=0 driving straight to the right
         traj2 = generate_straight_trajectory(x=-2.5,y=0,theta=0,v=1,ts=0.1,N=N_steps) # Trajectory from x=0,y=-1 driving straight up
@@ -396,5 +402,38 @@ if __name__=="__main__":
 
         avoid.run(robots, obstacles, sim_steps, predicted_states)
         avoid.mng.kill()
+
+    if case_nr == 4: 
+        # Case 2 - 5 Robots
+        N_steps = 70
+        r_model = RobotModelData(nr_of_robots=5, nx=5, qobs=200, r=50, qN=200, qaccW=50, qaccV=50, qpol=200, qbounds=200, qdyn=200, q=q_lines)
+        avoid = Simulator(r_model, centralized=centralized, distributed=distributed)
+        traj1 = generate_straight_trajectory(x=-4,y=0,theta=0,v=1,ts=0.1,N=N_steps) # Trajectory from x=-1, y=0 driving straight to the right
+        traj2 = generate_straight_trajectory(x=4,y=0,theta=-cs.pi,v=1,ts=0.1,N=N_steps) # Trajectory from x=0,y=-1 driving straight up
+        traj3 = generate_straight_trajectory(x=1,y=-2,theta=cs.pi/2,v=1,ts=0.1,N=N_steps) # Trajectory from x=0,y=-1 driving straight up
+        traj4 = generate_straight_trajectory(x=-1,y=-2,theta=cs.pi/2,v=1,ts=0.1,N=N_steps) # Trajectory from x=0,y=-1 driving straight up
+        traj5 = generate_straight_trajectory(x=-4,y=2,theta=0,v=1,ts=0.1,N=N_steps) # Trajectory from x=-1, y=0 driving straight to the right
+
+        obstacles = {}
+        obstacles['Unpadded'] =  [None, None, None, None, None]
+        obstacles['Padded'] = [None, None, None, None, None]
+        obstacles['Boundaries'] =  Polygon([[-4.5, -4.5], [4.5, -4.5], [4.5, 4.5], [-4.5, 4.5]]) 
+        obstacles['Dynamic'] = {'center': [-3,-3], 'a': 0.5, 'b': 0.25, 'vel': [1,1], 'apad': 0.5, 'bpad': 0.5, 'phi': cs.pi/4, 'active': True}
         
+        nx =5
+        nx =5
+        robots = {}
+        robots[0] = {"State": traj1[:nx], 'Ref': traj1[nx:20*nx+nx], 'Remainder': traj1[20*nx+nx:], 'u': [1,1]*N, 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'r', 'dyn_obj': False}
+        robots[1] = {"State": traj2[:nx], 'Ref': traj2[nx:20*nx+nx], 'Remainder': traj2[20*nx+nx:], 'u': [1,1]*N, 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b', 'dyn_obj': False}
+        robots[2] = {"State": traj3[:nx], 'Ref': traj3[nx:20*nx+nx], 'Remainder': traj3[20*nx+nx:], 'u': [1,1]*N, 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'g', 'dyn_obj': False}
+        robots[3] = {"State": traj4[:nx], 'Ref': traj4[nx:20*nx+nx], 'Remainder': traj4[20*nx+nx:], 'u': [1,1]*N, 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'm', 'dyn_obj': False}
+        robots[4] = {"State": traj5[:nx], 'Ref': traj5[nx:20*nx+nx], 'Remainder': traj5[20*nx+nx:], 'u': [1,1]*N, 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'y', 'dyn_obj': False}
+        
+        u = avoid.get_control_signals_from_ref(robots)
+        predicted_states = {i: avoid.predicted_states_from_u(robots[i]['Ref'][0],robots[i]['Ref'][1],robots[i]['Ref'][2],u[i]) for i in range(r_model.nr_of_robots)}
+
+        avoid.run(robots, obstacles, sim_steps, predicted_states)
+        avoid.mng.kill()
+            
+            
     
