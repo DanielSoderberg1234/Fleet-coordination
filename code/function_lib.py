@@ -3,6 +3,7 @@ import numpy as np
 from scipy.spatial import ConvexHull
 import cdd
 from shapely.geometry import Polygon
+import math
 
 def model(x,y,theta,u,ts):
     # Get the velocities for readability 
@@ -25,6 +26,19 @@ def generate_straight_trajectory(x,y,theta,v,ts,N):
         states.extend([x,y,theta,v,0])
 
     return states
+
+def dist_to_ref(robots):
+    """dist = 0
+    for robot_id in robots: 
+        x_ref,y_ref = robots[robot_id]['Ref'][0:2]
+        x,y = robots[robot_id]['State'][0:2]
+        dist += math.sqrt((x-x_ref)**2+(y-y_ref)**2)"""
+    dist = []
+    for robot_id in robots: 
+        x_ref,y_ref = robots[robot_id]['Ref'][0:2]
+        x,y = robots[robot_id]['State'][0:2]
+        dist.append(math.sqrt((x-x_ref)**2+(y-y_ref)**2))
+    return dist
 
 def generate_turn_right_trajectory(x,y,theta,v,ts,N1,N2): 
     states = [x,y,theta,v,0]

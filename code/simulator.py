@@ -1,6 +1,6 @@
 import casadi.casadi as cs
 from numpy.lib.arraypad import pad
-from function_lib import model, generate_straight_trajectory, generate_turn_right_trajectory, predict, padded_square, unpadded_square, polygon_to_eqs
+from function_lib import model, generate_straight_trajectory, generate_turn_right_trajectory, predict, padded_square, unpadded_square, polygon_to_eqs, dist_to_ref
 import opengen as og
 import warnings
 warnings.filterwarnings("ignore")
@@ -281,13 +281,21 @@ class Simulator:
         
         
     def run(self, robots, obstacles, sim_steps, predicted_states):
+        tot_dist = []
         # Run the simulation for a number of steps
         if self.centralized:
             for i in range(0,sim_steps): 
                 self.step_centralized(robots,obstacles,iteration_step=i)
+                tot_dist.append(dist_to_ref(robots)) 
         elif self.distributed: 
             for i in range(0,sim_steps): 
                 self.step_distributed(robots,obstacles,i,predicted_states)
+                tot_dist.append(dist_to_ref(robots))
+        total_dist_robot = [sum(x) for x in zip(*tot_dist)]
+        print('total dist per robot')
+        print(total_dist_robot)
+        print('total dist summed')
+        print(sum(total_dist_robot))
         self.plotter.stop()
         self.plotter.plot_computation_time(self.time_vec)
 
@@ -300,7 +308,7 @@ if __name__=="__main__":
     sim_steps = 70
     centralized = True
     distributed = False
-    case_nr = 1
+    case_nr = 2
 
     if case_nr == 1:
         N_steps = 60 
