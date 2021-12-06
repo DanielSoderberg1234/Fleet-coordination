@@ -616,7 +616,7 @@ class Distributed:
 
 def main(name):
     if name == 'Centralized':  
-        cen = Centralized(nr_of_robots=5)
+        cen = Centralized(nr_of_robots=10)
         cen.build_mpc()
     else:
         dis = Distributed(nr_of_robots=20)
@@ -624,5 +624,5 @@ def main(name):
 
 
 if __name__=='__main__':
-    main('Distributed')
+    main('Centralized')
     

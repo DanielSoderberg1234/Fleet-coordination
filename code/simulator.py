@@ -1,6 +1,6 @@
 import casadi.casadi as cs
 from numpy.lib.arraypad import pad
-from function_lib import model, generate_straight_trajectory, generate_turn_right_trajectory, predict, padded_square, unpadded_square, polygon_to_eqs
+from function_lib import model, generate_straight_trajectory, generate_turn_right_trajectory, predict, padded_square, unpadded_square, polygon_to_eqs, dist_to_ref
 import opengen as og
 import warnings
 warnings.filterwarnings("ignore")
@@ -9,6 +9,7 @@ from time import perf_counter_ns
 from RobotModelData import RobotModelData
 from shapely.geometry import Polygon
 from plotter import Plotter
+import numpy as np
 
 
 class Simulator: 
@@ -42,10 +43,7 @@ class Simulator:
 
         # Time 
         self.time = 0
-        self.time2 = 0
         self.time_vec = []
-        self.time_vec2 = []
-        self.time_vec3 = {0: [], 1: []}
 
     def predicted_states_from_u(self,x,y,theta,u): 
         # Get the linear and angular velocities
@@ -215,7 +213,6 @@ class Simulator:
         
 
         times = [0]*self.nr_of_robots
-        t3 = perf_counter_ns()
         for i in range(pmax):
             K = 0
             for robot_id in robots: 
@@ -262,12 +259,6 @@ class Simulator:
             predicted_states.update(predicted_states_temp)
             if K < epsilon:
                 break
-        
-        t4 = perf_counter_ns()
-        self.time2 += (t4-t3)/10**6 
-        self.time_vec2.append((t4-t3)/10**6 )
-        self.time_vec3[0].append(times[0])
-        self.time_vec3[1].append(times[1])
 
     def step_distributed(self,robots,obstacles,iteration_step,predicted_states): 
         #run the distributed algorithm
@@ -281,17 +272,25 @@ class Simulator:
         
         
     def run(self, robots, obstacles, sim_steps, predicted_states):
+        tot_dist = []
         # Run the simulation for a number of steps
         if self.centralized:
+            print('-------centralized-------')
             for i in range(0,sim_steps): 
                 self.step_centralized(robots,obstacles,iteration_step=i)
-                #if i==20 or i==50: 
-                #    input("Take picture")
+                tot_dist.append(dist_to_ref(robots)) 
         elif self.distributed: 
+            print('-------distributed-------')
             for i in range(0,sim_steps): 
                 self.step_distributed(robots,obstacles,i,predicted_states)
-                #if i==20 or i==50: 
-                #    input("Take picture")
+                tot_dist.append(dist_to_ref(robots))
+        total_dist_robot = [sum(x) for x in zip(*tot_dist)]
+        total_dist_robot = [total_dist_robot[i]*0.1 for i in range(len(total_dist_robot))]
+        print('total dist per robot')
+        print(total_dist_robot)
+        print('total dist summed')
+        print(sum(total_dist_robot))
+        print('mean: ',np.mean(total_dist_robot),'var: ',np.var(total_dist_robot))
         self.plotter.stop()
         self.plotter.plot_computation_time(self.time_vec)
 
@@ -302,12 +301,11 @@ if __name__=="__main__":
     nu = 2
     N = 20
     sim_steps = 70
-    centralized = False
-    distributed = True
+    centralized = True
+    distributed = False
     case_nr = 2
+    q_lines = 10
     
-    q_lines = 10 
-
     if case_nr == 1:
         N_steps = 60 
         r_model = RobotModelData(nr_of_robots=2, nx=5, qobs=200, r=50, qN=200, qaccW=50, qaccV=50, qpol=200, qbounds=200, qdyn=0, q=q_lines)
