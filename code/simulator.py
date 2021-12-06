@@ -9,6 +9,7 @@ from time import perf_counter_ns
 from RobotModelData import RobotModelData
 from shapely.geometry import Polygon
 from plotter import Plotter
+import numpy as np
 
 
 class Simulator: 
@@ -284,18 +285,22 @@ class Simulator:
         tot_dist = []
         # Run the simulation for a number of steps
         if self.centralized:
+            print('-------centralized-------')
             for i in range(0,sim_steps): 
                 self.step_centralized(robots,obstacles,iteration_step=i)
                 tot_dist.append(dist_to_ref(robots)) 
         elif self.distributed: 
+            print('-------distributed-------')
             for i in range(0,sim_steps): 
                 self.step_distributed(robots,obstacles,i,predicted_states)
                 tot_dist.append(dist_to_ref(robots))
         total_dist_robot = [sum(x) for x in zip(*tot_dist)]
+        total_dist_robot = [total_dist_robot[i]*0.1 for i in range(len(total_dist_robot))]
         print('total dist per robot')
         print(total_dist_robot)
         print('total dist summed')
         print(sum(total_dist_robot))
+        print('mean: ',np.mean(total_dist_robot),'var: ',np.var(total_dist_robot))
         self.plotter.stop()
         self.plotter.plot_computation_time(self.time_vec)
 
