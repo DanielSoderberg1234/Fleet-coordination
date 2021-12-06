@@ -43,10 +43,7 @@ class Simulator:
 
         # Time 
         self.time = 0
-        self.time2 = 0
         self.time_vec = []
-        self.time_vec2 = []
-        self.time_vec3 = {0: [], 1: []}
 
     def predicted_states_from_u(self,x,y,theta,u): 
         # Get the linear and angular velocities
@@ -216,7 +213,6 @@ class Simulator:
         
 
         times = [0]*self.nr_of_robots
-        t3 = perf_counter_ns()
         for i in range(pmax):
             K = 0
             for robot_id in robots: 
@@ -263,12 +259,6 @@ class Simulator:
             predicted_states.update(predicted_states_temp)
             if K < epsilon:
                 break
-        
-        t4 = perf_counter_ns()
-        self.time2 += (t4-t3)/10**6 
-        self.time_vec2.append((t4-t3)/10**6 )
-        self.time_vec3[0].append(times[0])
-        self.time_vec3[1].append(times[1])
 
     def step_distributed(self,robots,obstacles,iteration_step,predicted_states): 
         #run the distributed algorithm
