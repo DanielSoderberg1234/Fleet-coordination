@@ -24,6 +24,7 @@ class Plotter:
 
         plt.show(block=False)
         plt.tight_layout(pad=3.0)
+        plt.pause(5)
         
 
     def stop(self): 

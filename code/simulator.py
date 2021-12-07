@@ -10,6 +10,7 @@ from RobotModelData import RobotModelData
 from shapely.geometry import Polygon
 from plotter import Plotter
 import numpy as np
+import random
 
 
 class Simulator: 
@@ -61,8 +62,10 @@ class Simulator:
 
     def update_state(self, robot): 
         x,y,theta,v,w = robot['State']
-        robot['Past_v'].append(v)
-        robot['Past_w'].append(w)
+        robot['Past_v'].append(v) 
+        robot['Past_w'].append(w) 
+        #robot['u'][0] += random.random()/10
+        #robot['u'][1] += random.random()/10
         x,y,theta = model(x,y,theta,robot['u'][:2],self.ts)
         robot['State'] = [x,y,theta,robot['u'][0],robot['u'][1]]
 
@@ -278,7 +281,7 @@ class Simulator:
             print('-------centralized-------')
             for i in range(0,sim_steps): 
                 self.step_centralized(robots,obstacles,iteration_step=i)
-                tot_dist.append(dist_to_ref(robots)) 
+                tot_dist.append(dist_to_ref(robots))
         elif self.distributed: 
             print('-------distributed-------')
             for i in range(0,sim_steps): 
@@ -301,17 +304,20 @@ if __name__=="__main__":
     nu = 2
     N = 20
     sim_steps = 70
-    centralized = True
-    distributed = False
+    centralized = False
+    distributed = True
     case_nr = 2
+
     q_lines = 10
+
+    
 
     if case_nr == 1:
         N_steps = 60 
         r_model = RobotModelData(nr_of_robots=2, nx=5, qobs=200, r=50, qN=200, qaccW=50, qaccV=50, qpol=200, qbounds=200, qdyn=0, q=q_lines)
         avoid = Simulator(r_model, centralized=centralized, distributed=distributed)
         traj1 = generate_straight_trajectory(x=-3,y=0,theta=0,v=1,ts=0.1,N=N_steps) # Trajectory from x=-1, y=0 driving straight to the right
-        traj2 = generate_straight_trajectory(x=0,y=-3,theta=cs.pi/2,v=1,ts=0.1,N=N_steps) # Trajectory from x=0,y=-1 driving straight up
+        traj2 = generate_straight_trajectory(x=0,y=-2.99,theta=cs.pi/2,v=1,ts=0.1,N=N_steps) # Trajectory from x=0,y=-1 driving straight up
 
         robots = {}
         robots[0] = {"State": traj1[:nx], 'Ref': traj1[nx:N*nx+nx], 'Remainder': traj1[N*nx+nx:], 'u': [1,0]*N, 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'r', 'dyn_obj': False}
@@ -332,9 +338,9 @@ if __name__=="__main__":
 
     if case_nr == 2: 
         N_steps = 70
-        r_model = RobotModelData(nr_of_robots=10, nx=5, qobs=200, r=50, qN=200, qaccW=50, qaccV=50, qpol=200, qbounds=200, qdyn=0, q=q_lines)
+        r_model = RobotModelData(nr_of_robots=10, nx=5, qobs=200, r=50, qN=200, qaccW=50, qaccV=50, qpol=200, qbounds=200, qdyn=200, q=q_lines)
         avoid = Simulator(r_model, centralized=centralized, distributed=distributed)
-        traj1 = generate_straight_trajectory(x=-3,y=4,theta=3*cs.pi/2,v=1,ts=0.1,N=N_steps)
+        traj1 = generate_straight_trajectory(x=-2.5,y=4,theta=3*cs.pi/2,v=1,ts=0.1,N=N_steps)
         traj2 = generate_straight_trajectory(x=0,y=4,theta=3*cs.pi/2,v=1,ts=0.1,N=N_steps) 
         traj3 = generate_straight_trajectory(x=3,y=4,theta=3*cs.pi/2,v=1,ts=0.1,N=N_steps)
         traj4 = generate_straight_trajectory(x=4,y=1,theta=cs.pi,v=1,ts=0.1,N=N_steps)
@@ -349,7 +355,7 @@ if __name__=="__main__":
         obstacles['Unpadded'] =  [None, None, None, None, None]
         obstacles['Padded'] = [None, None, None, None, None]
         obstacles['Boundaries'] =  Polygon([[-4.5, -4.5], [4.5, -4.5], [4.5, 4.5], [-4.5, 4.5]]) 
-        obstacles['Dynamic'] = {'center': [-3,-3], 'a': 0.5, 'b': 0.25, 'vel': [1,1], 'apad': 0.5, 'bpad': 0.5, 'phi': cs.pi/4, 'active': False}
+        obstacles['Dynamic'] = {'center': [-3,-3], 'a': 0.5, 'b': 0.25, 'vel': [1,1], 'apad': 0.5, 'bpad': 0.5, 'phi': cs.pi/4, 'active': True}
         
         nx =5
         robots = {}
