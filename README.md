@@ -36,4 +36,4 @@ Lastly, run the the actual simulation by running the following command.
 python simulator.py
 ```
 
-Follow the instructions in the terminal, first choose between my centralized and distributed and then choose between the 5 cases.
+Follow the instructions in the terminal, first choose between centralized and distributed and then choose between the 5 cases.
