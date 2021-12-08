@@ -1,5 +1,7 @@
 # Fleet-coordination
-This repository contains the work for the project Fleet Robot Coordination using Non-Linear Model Predictive Control.
+This project aimed to control a fleet of mobile wheeled robots using Non-Linear Model Predictive Control. 
+
+![img](docs/displayimg.png)
 
 ## Install dependencies
 To solve the optimization problem in the MPC-formulation the open source solver [OpEn](https://alphaville.github.io/optimization-engine/docs/installation) is used. The solver is implemented using Rust which can be installed by following the guide on their webpage [Rust](https://www.rust-lang.org/tools/install). 
