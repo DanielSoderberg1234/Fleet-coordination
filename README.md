@@ -1,5 +1,5 @@
 # Fleet-coordination
-This project aimed to control a fleet of mobile wheeled robots using Non-Linear Model Predictive Control. The individual trajectories for each robots where assumed to be given and they should be altered such that there are no collisions with other robots, static- and dynamic obstacles. Both a centralized and a distributed schemes where compared and both showed promising results. 
+This project aimed to control a fleet of mobile wheeled robots using Non-Linear Model Predictive Control. The individual trajectories for each robots where assumed to be given and they should be altered such that there are no collisions with other robots, static- and dynamic obstacles. Both a centralized and a distributed scheme where compared and both showed promising results. 
 
 
 ![img](docs/displayimg.png)
@@ -12,3 +12,25 @@ Anaconda will be used as the package manager of this project, install anaconda a
 ```
 conda env create -f env/env_slim.yml
 ```
+
+## Run the system 
+
+
+The first step run the system is to activate the enviroment. 
+
+```
+conda activate fleet
+```
+
+The second step is to build the solvers, assuimg you are in the root of the system run the following commands.
+```
+cd code 
+python mpcgenerator.py
+```
+
+Lastly, run the the actual simulation by running the following command.
+```
+python simulator.py
+```
+
+Follow the instructions in the terminal, first choose between my centralized and distributed and then choose between the 5 cases.

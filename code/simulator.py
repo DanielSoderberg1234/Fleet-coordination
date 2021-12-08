@@ -30,11 +30,11 @@ class Simulator:
         
         if centralized:
             self.plotter = Plotter(name='centralized',r_model=r_model)
-            self.mng = og.tcp.OptimizerTcpManager('collision_avoidance/robot_{}_solver'.format(self.nr_of_robots))
+            self.mng = og.tcp.OptimizerTcpManager('solvers/robot_{}_solver'.format(self.nr_of_robots))
             self.mng.start()
         elif distributed: 
             self.plotter = Plotter(name='distributed',r_model=r_model)
-            self.mng = og.tcp.OptimizerTcpManager("distributed1/distributed_solver_{}".format(self.max_nr_of_robots))
+            self.mng = og.tcp.OptimizerTcpManager("solvers/distributed_solver_{}".format(self.max_nr_of_robots))
             self.mng.start()
 
         # Save distance for each combination
@@ -299,18 +299,32 @@ class Simulator:
 
 
 if __name__=="__main__": 
+    while True:
+        scheme = input("Please enter to Centralized or Distributed to run the desired scheme:\n")
+        if scheme != 'Centralized' or scheme != 'Distributed': 
+            break
+    print('\n')
 
+    while True: 
+        case_nr = int(input("Please enter the case number for the case you want to run: \
+            \n1: 2 robots - simple crossing\
+            \n2: 10 robots - complex situation with dynamic obstacle\
+            \n3: 5 robots - joining a train of robots\
+            \n4: 5 robots - dynamic obstacle\
+            \n5: 2 robots - unsolvable\n"))
+        
+        if case_nr in [1,2,3,4,5]: 
+            break
+
+    # Some parameters
     nx =5
     nu = 2
     N = 20
     sim_steps = 70
-    centralized = True
-    distributed = False
-    case_nr = 2
-
+    centralized = (scheme == 'Centralized')
+    distributed = (scheme == 'Distributed')
     q_lines = 10
 
-    
 
     if case_nr == 1:
         N_steps = 60 

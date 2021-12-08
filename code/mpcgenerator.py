@@ -335,7 +335,7 @@ class Centralized:
                   
 
         build_config = og.config.BuildConfiguration()\
-            .with_build_directory("collision_avoidance")\
+            .with_build_directory("solvers")\
             .with_build_mode("debug")\
             .with_tcp_interface_config()
 
@@ -594,7 +594,7 @@ class Distributed:
                   
 
         build_config = og.config.BuildConfiguration()\
-            .with_build_directory("distributed1")\
+            .with_build_directory("solvers")\
             .with_build_mode("debug")\
             .with_tcp_interface_config()
 
@@ -614,15 +614,21 @@ class Distributed:
        
        
 
-def main(name):
-    if name == 'Centralized':  
-        cen = Centralized(nr_of_robots=5)
-        cen.build_mpc()
-    else:
-        dis = Distributed(nr_of_robots=20)
-        dis.build_mpc()
+def main():
+
+    cen2 = Centralized(nr_of_robots=2)
+    cen2.build_mpc()
+
+    cen5 = Centralized(nr_of_robots=5)
+    cen5.build_mpc()
+
+    cen10 = Centralized(nr_of_robots=10)
+    cen10.build_mpc()
+    
+    dis = Distributed(nr_of_robots=20)
+    dis.build_mpc()
 
 
 if __name__=='__main__':
-    main('Distributed')
+    main()
     
