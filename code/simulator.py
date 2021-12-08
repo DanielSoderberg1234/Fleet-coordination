@@ -306,7 +306,7 @@ if __name__=="__main__":
     sim_steps = 70
     centralized = True
     distributed = False
-    case_nr = 5
+    case_nr = 2
 
     q_lines = 10
 
