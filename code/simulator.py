@@ -304,9 +304,9 @@ if __name__=="__main__":
     nu = 2
     N = 20
     sim_steps = 70
-    centralized = False
-    distributed = True
-    case_nr = 2
+    centralized = True
+    distributed = False
+    case_nr = 5
 
     q_lines = 10
 
@@ -433,6 +433,29 @@ if __name__=="__main__":
         robots[3] = {"State": traj4[:nx], 'Ref': traj4[nx:20*nx+nx], 'Remainder': traj4[20*nx+nx:], 'u': [1,1]*N, 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'm', 'dyn_obj': False}
         robots[4] = {"State": traj5[:nx], 'Ref': traj5[nx:20*nx+nx], 'Remainder': traj5[20*nx+nx:], 'u': [1,1]*N, 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'y', 'dyn_obj': False}
         
+        u = avoid.get_control_signals_from_ref(robots)
+        predicted_states = {i: avoid.predicted_states_from_u(robots[i]['Ref'][0],robots[i]['Ref'][1],robots[i]['Ref'][2],u[i]) for i in range(r_model.nr_of_robots)}
+
+        avoid.run(robots, obstacles, sim_steps, predicted_states)
+        avoid.mng.kill()
+
+    if case_nr == 5:
+        N_steps = 60 
+        r_model = RobotModelData(nr_of_robots=2, nx=5, qobs=200, r=50, qN=200, qaccW=50, qaccV=50, qpol=200, qbounds=200, qdyn=0, q=q_lines)
+        avoid = Simulator(r_model, centralized=centralized, distributed=distributed)
+        traj1 = generate_straight_trajectory(x=-3,y=0,theta=0,v=1,ts=0.1,N=N_steps) # Trajectory from x=-1, y=0 driving straight to the right
+        traj2 = generate_straight_trajectory(x=3,y=0,theta=cs.pi,v=1,ts=0.1,N=N_steps) # Trajectory from x=0,y=-1 driving straight up
+
+        robots = {}
+        robots[0] = {"State": traj1[:nx], 'Ref': traj1[nx:N*nx+nx], 'Remainder': traj1[N*nx+nx:], 'u': [1,0]*N, 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'r', 'dyn_obj': False}
+        robots[1] = {"State": traj2[:nx], 'Ref': traj2[nx:N*nx+nx], 'Remainder': traj2[N*nx+nx:], 'u': [1,0]*N, 'Past_x': [], 'Past_y': [], 'Past_v': [], 'Past_w': [], 'Color': 'b', 'dyn_obj': False}
+        
+        obstacles = {}
+        obstacles['Unpadded'] =  [unpadded_square(0,2,8,2.5), unpadded_square(0,-2,8,2.5), None, None, None]
+        obstacles['Padded'] = [padded_square(0,2,8,2.5, 0.5), padded_square(0,-2,8,2.5, 0.5), None, None, None]
+        obstacles['Boundaries'] =  Polygon([[-8, -8], [8, -8], [8, 8], [-8, 8]])   
+        obstacles['Dynamic'] = {'center': [-3,-3], 'a': 0.5, 'b': 0.25, 'vel': [1,1], 'apad': 0.5, 'bpad': 0.5, 'phi': cs.pi/4, 'active': False}
+
         u = avoid.get_control_signals_from_ref(robots)
         predicted_states = {i: avoid.predicted_states_from_u(robots[i]['Ref'][0],robots[i]['Ref'][1],robots[i]['Ref'][2],u[i]) for i in range(r_model.nr_of_robots)}
 
