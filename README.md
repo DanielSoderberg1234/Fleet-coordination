@@ -1,5 +1,5 @@
 # Fleet-coordination
-This project aimed to control a fleet of mobile wheeled robots using Non-Linear Model Predictive Control. The individual trajectories for each robots where assumed to be given and they should be altered such that there are no collisions with other robots, static- and dynamic obstacles. Both a centralized and a distributed schemes where compared and both showed promising results. The solve times for each iteration and a number of different cases can be seen in the table.
+This project aimed to control a fleet of mobile wheeled robots using Non-Linear Model Predictive Control. The individual trajectories for each robots where assumed to be given and they should be altered such that there are no collisions with other robots, static- and dynamic obstacles. Both a centralized and a distributed schemes where compared and both showed promising results. The solve times for each iteration and a number of different cases can be seen in the table. The complexity of the centralized approach wrt to the number of robots points to $$\mathcal{O}(n)$$
 
 ![solve](docs/solvetimes.PNG)
 
